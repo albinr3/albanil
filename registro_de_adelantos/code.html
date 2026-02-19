@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Registro de Adelantos</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0d6cf2",
+                        "primary-dark": "#0b5bc9",
+                        "background-light": "#f5f7f8",
+                        "background-dark": "#101722",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* iOS-like smooth scrolling */
+        body {
+            -webkit-overflow-scrolling: touch;
+        }
+        /* Custom scrollbar hiding for cleaner look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* Input focus rings to match theme */
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(13, 108, 242, 0.2);
+            border-color: #0d6cf2;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-800 dark:text-slate-100 min-h-screen flex flex-col">
+<!-- Header (iOS Style) -->
+<header class="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 pt-12 pb-3">
+<div class="flex items-center justify-between">
+<button class="p-2 -ml-2 rounded-full text-primary hover:bg-primary/10 transition-colors">
+<span class="material-icons">arrow_back_ios_new</span>
+</button>
+<h1 class="text-lg font-semibold text-slate-900 dark:text-white">Adelantos</h1>
+<button class="p-2 -mr-2 rounded-full text-primary hover:bg-primary/10 transition-colors">
+<span class="material-icons">history</span>
+</button>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 px-4 py-6 max-w-md mx-auto w-full space-y-8">
+<!-- Input Form Card -->
+<div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 p-5 space-y-5">
+<!-- Date & Worker Selection -->
+<div class="space-y-4">
+<div class="flex justify-between items-center text-sm">
+<span class="text-slate-500 dark:text-slate-400 font-medium">Nueva entrada</span>
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+<span class="material-icons text-[14px]">calendar_today</span> Hoy
+                    </span>
+</div>
+<div class="relative">
+<label class="sr-only" for="worker">Seleccionar trabajador</label>
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-icons text-slate-400">person</span>
+</div>
+<select class="block w-full pl-10 pr-10 py-3 text-base border-slate-200 dark:border-slate-600 focus:ring-primary focus:border-primary rounded-lg bg-slate-50 dark:bg-slate-700/50 dark:text-white appearance-none transition-shadow" id="worker">
+<option disabled="" selected="" value="">Seleccionar trabajador</option>
+<option value="1">Juan "El Flaco" Pérez</option>
+<option value="2">Pedro "Mezcla" Rodriguez</option>
+<option value="3">Miguel Ángel Santos</option>
+<option value="4">Jose "Varilla" Martinez</option>
+</select>
+<div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+<span class="material-icons text-slate-400">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Amount Input (Big) -->
+<div class="relative py-2">
+<label class="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1 text-center" for="amount">Monto a Adelantar</label>
+<div class="relative flex items-center justify-center">
+<span class="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-slate-400">RD$</span>
+<input class="block w-full text-center text-4xl font-bold text-slate-900 dark:text-white bg-transparent border-none focus:ring-0 p-2 placeholder-slate-200 dark:placeholder-slate-600" id="amount" placeholder="0" type="number"/>
+</div>
+<div class="h-px w-full bg-slate-200 dark:bg-slate-700 mt-2"></div>
+</div>
+<!-- Note Field -->
+<div>
+<label class="sr-only" for="note">Nota</label>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-icons text-slate-400 text-lg">edit_note</span>
+</div>
+<input class="block w-full pl-10 pr-3 py-3 border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700/50 text-sm focus:ring-primary focus:border-primary dark:text-white" id="note" placeholder="Nota opcional (ej. Comida, Pasaje)" type="text"/>
+</div>
+</div>
+<!-- Big CTA -->
+<button class="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-4 px-4 rounded-xl shadow-lg shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group">
+<span class="material-icons group-hover:animate-pulse">add_circle</span>
+                Registrar adelanto
+            </button>
+</div>
+<!-- Recent Advances List -->
+<div class="space-y-4">
+<div class="flex items-center justify-between px-1">
+<h2 class="text-base font-semibold text-slate-900 dark:text-white">Recientes</h2>
+<a class="text-sm text-primary font-medium hover:text-primary-dark" href="#">Ver todo</a>
+</div>
+<div class="space-y-3 pb-20">
+<!-- Card 1: Pending -->
+<div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex justify-between items-center active:bg-slate-50 dark:active:bg-slate-700/80 transition-colors">
+<div class="flex items-start gap-3">
+<div class="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold shrink-0">
+                            JM
+                        </div>
+<div>
+<h3 class="font-semibold text-slate-900 dark:text-white">Jose "Varilla"</h3>
+<p class="text-xs text-slate-500 mt-0.5">Hoy, 9:41 AM</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-bold text-slate-900 dark:text-white">RD$ 2,000</p>
+<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 mt-1">
+                            Pendiente
+                        </span>
+</div>
+</div>
+<!-- Card 2: Partial -->
+<div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex justify-between items-center active:bg-slate-50 dark:active:bg-slate-700/80 transition-colors">
+<div class="flex items-start gap-3">
+<div class="h-10 w-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400 font-bold shrink-0">
+                            PF
+                        </div>
+<div>
+<h3 class="font-semibold text-slate-900 dark:text-white">Pedro "El Flaco"</h3>
+<p class="text-xs text-slate-500 mt-0.5">Ayer, 4:20 PM</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-bold text-slate-900 dark:text-white">RD$ 500</p>
+<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200 mt-1">
+                            Parcial
+                        </span>
+</div>
+</div>
+<!-- Card 3: Descontado (Done) -->
+<div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex justify-between items-center active:bg-slate-50 dark:active:bg-slate-700/80 transition-colors opacity-75">
+<div class="flex items-start gap-3">
+<div class="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 font-bold shrink-0">
+                            MS
+                        </div>
+<div>
+<h3 class="font-semibold text-slate-900 dark:text-white">Miguel Santos</h3>
+<p class="text-xs text-slate-500 mt-0.5">12 Oct</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-bold text-slate-900 dark:text-white">RD$ 1,500</p>
+<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200 mt-1">
+                            Descontado
+                        </span>
+</div>
+</div>
+<!-- Card 4: Pending -->
+<div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex justify-between items-center active:bg-slate-50 dark:active:bg-slate-700/80 transition-colors">
+<div class="flex items-start gap-3">
+<div class="h-10 w-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold shrink-0">
+                            LC
+                        </div>
+<div>
+<h3 class="font-semibold text-slate-900 dark:text-white">Luis "Carpintero"</h3>
+<p class="text-xs text-slate-500 mt-0.5">11 Oct</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-bold text-slate-900 dark:text-white">RD$ 3,000</p>
+<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 mt-1">
+                            Pendiente
+                        </span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Optional context for App feel) -->
+<nav class="fixed bottom-0 w-full bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pb-safe">
+<div class="flex justify-around items-center h-16 max-w-md mx-auto">
+<button class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-primary space-y-1">
+<span class="material-icons text-2xl">home</span>
+<span class="text-[10px] font-medium">Inicio</span>
+</button>
+<button class="flex flex-col items-center justify-center w-full h-full text-primary space-y-1">
+<span class="material-icons text-2xl">request_quote</span>
+<span class="text-[10px] font-medium">Adelantos</span>
+</button>
+<button class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-primary space-y-1">
+<span class="material-icons text-2xl">groups</span>
+<span class="text-[10px] font-medium">Personal</span>
+</button>
+</div>
+</nav>
+<div class="h-16 w-full shrink-0"></div> <!-- Spacer for fixed nav -->
+</body></html>

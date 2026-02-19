@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Historial de Pagos</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0d6cf2",
+                        "background-light": "#f5f7f8",
+                        "background-dark": "#101722",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* iOS-like safe area padding */
+        .safe-area-top {
+            padding-top: env(safe-area-inset-top, 20px);
+        }
+        .safe-area-bottom {
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+        /* Custom scrollbar hiding for clean mobile look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased h-screen flex flex-col overflow-hidden selection:bg-primary/30">
+<!-- Top Navigation Bar -->
+<header class="safe-area-top bg-white dark:bg-[#151f2e] border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50">
+<div class="px-4 h-14 flex items-center justify-between">
+<button class="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-primary">
+<span class="material-icons text-[28px]">chevron_left</span>
+</button>
+<h1 class="text-lg font-bold text-center flex-1 pr-8">Historial de Pagos</h1>
+<!-- Empty div to balance the flex container if needed, currently using pr-8 on title -->
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
+<!-- Summary Stats Section -->
+<div class="grid grid-cols-2 gap-3 mb-2">
+<div class="bg-white dark:bg-[#151f2e] p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
+<p class="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Total Mes (Feb)</p>
+<p class="text-xl font-bold text-primary">RD$ 435,500</p>
+</div>
+<div class="bg-white dark:bg-[#151f2e] p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
+<p class="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Trabajadores</p>
+<div class="flex items-center gap-1">
+<span class="material-icons text-sm text-green-500">group</span>
+<p class="text-xl font-bold text-slate-800 dark:text-white">24</p>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pb-1 pt-2">
+<h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Semanas Anteriores</h2>
+<button class="text-primary text-sm font-medium">Filtrar</button>
+</div>
+<!-- List of Weekly Cards -->
+<div class="space-y-3">
+<!-- Card 1: Active/Detailed State (simulated expanded or focused) -->
+<div class="bg-white dark:bg-[#151f2e] rounded-xl shadow-sm border-l-4 border-primary p-4 relative active:scale-[0.98] transition-transform duration-100 cursor-pointer group">
+<div class="flex justify-between items-start mb-3">
+<div>
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 mb-2">
+                            Pagada
+                        </span>
+<h3 class="text-lg font-bold text-slate-900 dark:text-white">Semana 16–21 Feb</h3>
+</div>
+<span class="material-icons text-gray-300 dark:text-gray-600 group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+<div class="flex justify-between items-end">
+<div>
+<p class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Monto total</p>
+<p class="text-2xl font-bold text-slate-900 dark:text-white">RD$ 145,000</p>
+</div>
+<div class="flex -space-x-2 overflow-hidden">
+<img alt="Construction worker face" class="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-[#151f2e]" data-alt="Worker portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYUPSGj3D2MPHi2ZVbBBdClFIrx9rSoCszhrjlV1dRAMWed20B27wj2u8W45sUtyeudn9N4xFW2-WdCQg9Rmz4pKcP6ZByO6YjtawMfTe7qrngRREHX46aGF99aDS3LWMsjTzP4McIh-2f6xv6mD4YTXsmQBGdykUWftRcfduFKusA9UI6wYTuoHHSSYYuOqe6iwvkDIpLpx6gNQwZKEgyXVTQiB7dpn-c30Yn2xrxntTCbV7YV83AX7kG2fKhSCT0YrLv9F5ppYk"/>
+<img alt="Construction worker face" class="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-[#151f2e]" data-alt="Worker portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJCPeRXLt5sj0k3nPMzoSxTzYVfGB0fu0NfC7h179HiQMhdNuAkESFdXvhFiCd2A3NgoQRfgLxWnnqzk38m26XjlDm26eKNItMD_a8ZUgZEr3DQLwv_FFSUtneOlUoSQVDxUXgtN25MdVULfth2FA2tM1eY8BUnFQPVXwfAPg0F6X4eHtY4pRjuQ4ao3xQsCNlRFcHZ8C2Ka2ksFZQo0s3Py6ouWhpmQA9107-qFfpJmaLcK3CFHOwmi5Mzz_IQwhx5_-hN5LVjW4"/>
+<img alt="Construction worker face" class="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-[#151f2e]" data-alt="Worker portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHMWidhwA2Dzqu-HgraV3A__JLT2FAkaKmnXsLP6OXubu3bhwSRsCT6CPkYiolbmuBKixULNdyz0Ur7D0Xx9tRt5qRrXlmIKx-UEB3a1VPhBF8I1mD8lhC_NHgtRc9hjz0t4nIm1vvN_oBCy_TymXayPL0JE2yrHiHpVJojpHg23j4tR5NSnDoW6Nw-RaEBYE5IpbixlqXuTuwP2DQsja47aM_Vwid4u8A1BVoIrTpCN6izf32OFvoHFDgab4172ltIvyoAaLoOsQ"/>
+<div class="h-8 w-8 rounded-full ring-2 ring-white dark:ring-[#151f2e] bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xs font-medium text-gray-500 dark:text-gray-300">+12</div>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-white dark:bg-[#151f2e] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 active:scale-[0.98] transition-transform duration-100 cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<div>
+<h3 class="text-base font-bold text-slate-900 dark:text-white">Semana 9–14 Feb</h3>
+<p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">8 Trabajadores</p>
+</div>
+<div class="flex flex-col items-end">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 mb-1">
+                            Pagada
+                        </span>
+<p class="text-lg font-bold text-slate-900 dark:text-white">RD$ 138,500</p>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-white dark:bg-[#151f2e] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 active:scale-[0.98] transition-transform duration-100 cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<div>
+<h3 class="text-base font-bold text-slate-900 dark:text-white">Semana 2–7 Feb</h3>
+<p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">15 Trabajadores</p>
+</div>
+<div class="flex flex-col items-end">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 mb-1">
+                            Pagada
+                        </span>
+<p class="text-lg font-bold text-slate-900 dark:text-white">RD$ 152,000</p>
+</div>
+</div>
+</div>
+<!-- Card 4 (Older - January) -->
+<div class="bg-white dark:bg-[#151f2e] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 active:scale-[0.98] transition-transform duration-100 cursor-pointer opacity-80">
+<div class="flex justify-between items-start mb-2">
+<div>
+<h3 class="text-base font-bold text-slate-900 dark:text-white">Semana 26–31 Ene</h3>
+<p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">14 Trabajadores</p>
+</div>
+<div class="flex flex-col items-end">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 mb-1">
+                            Archivada
+                        </span>
+<p class="text-lg font-bold text-slate-700 dark:text-slate-300">RD$ 141,200</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Spacer for FAB -->
+<div class="h-24"></div>
+</main>
+<!-- Detailed View Modal Overlay (Simulated as if card 1 was tapped) -->
+<!-- In a real app this would animate in. Here we display it inline for the "Tapping a card shows..." requirement context -->
+<div class="fixed inset-0 z-[60] flex flex-col justify-end pointer-events-none">
+<!-- Backdrop -->
+<div class="absolute inset-0 bg-black/60 pointer-events-auto backdrop-blur-sm"></div>
+<!-- Modal Content -->
+<div class="bg-background-light dark:bg-background-dark w-full rounded-t-2xl shadow-2xl transform transition-transform pointer-events-auto h-[85vh] flex flex-col">
+<!-- Handle bar -->
+<div class="w-full flex justify-center pt-3 pb-1 cursor-grab">
+<div class="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+</div>
+<!-- Modal Header -->
+<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-start bg-background-light dark:bg-background-dark">
+<div>
+<h2 class="text-2xl font-bold text-slate-900 dark:text-white">Semana 16–21 Feb</h2>
+<p class="text-sm text-gray-500 dark:text-gray-400">Resumen de nómina</p>
+</div>
+<button class="p-2 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500 dark:text-gray-400 hover:text-red-500">
+<span class="material-icons text-xl">close</span>
+</button>
+</div>
+<!-- Modal Scrollable Content -->
+<div class="flex-1 overflow-y-auto p-6 space-y-6">
+<!-- Highlights -->
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-primary/5 dark:bg-primary/10 p-4 rounded-xl border border-primary/10">
+<p class="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Total Pagado</p>
+<p class="text-2xl font-bold text-slate-900 dark:text-white">RD$ 145k</p>
+</div>
+<div class="bg-white dark:bg-[#151f2e] p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+<p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Estado</p>
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+<p class="text-lg font-bold text-slate-900 dark:text-white">Completado</p>
+</div>
+</div>
+</div>
+<!-- Workers List -->
+<div>
+<h3 class="text-sm font-bold text-gray-900 dark:text-white mb-3">Detalle por trabajador</h3>
+<div class="bg-white dark:bg-[#151f2e] rounded-xl border border-gray-100 dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800">
+<!-- Worker Item 1 -->
+<div class="p-3 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-primary flex items-center justify-center font-bold text-sm">
+                                    JR
+                                </div>
+<div>
+<p class="text-sm font-semibold text-slate-900 dark:text-white">Juan Rodriguez</p>
+<p class="text-xs text-gray-500">Maestro • 5 días</p>
+</div>
+</div>
+<span class="font-medium text-slate-900 dark:text-white">RD$ 15,000</span>
+</div>
+<!-- Worker Item 2 -->
+<div class="p-3 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-sm">
+                                    MP
+                                </div>
+<div>
+<p class="text-sm font-semibold text-slate-900 dark:text-white">Mario Perez</p>
+<p class="text-xs text-gray-500">Albañil • 5.5 días</p>
+</div>
+</div>
+<span class="font-medium text-slate-900 dark:text-white">RD$ 12,500</span>
+</div>
+<!-- Worker Item 3 -->
+<div class="p-3 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold text-sm">
+                                    LS
+                                </div>
+<div>
+<p class="text-sm font-semibold text-slate-900 dark:text-white">Luis Sanchez</p>
+<p class="text-xs text-gray-500">Ayudante • 6 días</p>
+</div>
+</div>
+<span class="font-medium text-slate-900 dark:text-white">RD$ 9,000</span>
+</div>
+<!-- More indicator -->
+<div class="p-2 text-center">
+<p class="text-xs text-gray-400">+ 12 trabajadores más</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Bottom Action -->
+<div class="safe-area-bottom p-4 bg-white dark:bg-[#151f2e] border-t border-gray-100 dark:border-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+<button class="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-semibold py-4 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-lg shadow-green-500/20 active:scale-[0.98]">
+<svg class="w-6 h-6 fill-current" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"></path>
+</svg>
+                    Compartir por WhatsApp
+                </button>
+</div>
+</div>
+</div>
+</body></html>

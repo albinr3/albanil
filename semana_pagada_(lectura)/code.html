@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Semana Pagada - Construcción App</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0d6cf2",
+                        "primary-dark": "#0a56c4",
+                        "background-light": "#f5f7f8",
+                        "background-dark": "#101722",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        /* iOS-like smooth scrolling and safe areas */
+        body {
+            -webkit-tap-highlight-color: transparent;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .ios-shadow {
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 5px 15px rgba(0,0,0,0.02);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-800 dark:text-slate-100 min-h-screen flex justify-center">
+<!-- Mobile Container (simulating phone screen) -->
+<div class="w-full max-w-md bg-background-light dark:bg-background-dark min-h-screen relative flex flex-col pb-24">
+<!-- Navigation Bar -->
+<header class="px-4 pt-12 pb-4 flex items-center justify-between bg-white dark:bg-slate-900 sticky top-0 z-20 border-b border-slate-200 dark:border-slate-800">
+<button class="p-2 -ml-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors rounded-full">
+<span class="material-icons">arrow_back_ios_new</span>
+</button>
+<h1 class="text-lg font-semibold tracking-tight">Detalles de Pago</h1>
+<button class="p-2 -mr-2 text-primary hover:text-primary-dark transition-colors font-medium text-sm">
+                Historial
+            </button>
+</header>
+<!-- Status Banner: "Semana Cerrada" -->
+<div class="px-4 py-3 bg-slate-100 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2">
+<span class="material-icons text-slate-500 text-sm">lock</span>
+<span class="text-sm font-medium text-slate-500 uppercase tracking-wide">Semana Cerrada • Solo Lectura</span>
+</div>
+<main class="flex-1 px-4 py-6 space-y-6">
+<!-- Week Header Info -->
+<div class="flex justify-between items-end">
+<div>
+<p class="text-sm text-slate-500 dark:text-slate-400 font-medium">Semana 42</p>
+<h2 class="text-2xl font-bold text-slate-900 dark:text-white">12 Oct - 18 Oct</h2>
+</div>
+<div class="text-right">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+<span class="material-icons text-[14px]">check_circle</span>
+                        Pagado
+                    </span>
+</div>
+</div>
+<!-- Financial Summary Card -->
+<div class="bg-white dark:bg-slate-800 rounded-2xl p-5 ios-shadow border border-slate-100 dark:border-slate-700 relative overflow-hidden group">
+<!-- Abstract bg pattern -->
+<div class="absolute -right-6 -top-6 w-32 h-32 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all duration-500"></div>
+<div class="relative z-10">
+<p class="text-sm text-slate-500 dark:text-slate-400 mb-1">Total Desembolsado</p>
+<div class="flex items-baseline gap-1">
+<span class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">RD$ 145,500</span>
+<span class="text-lg text-slate-400 font-medium">.00</span>
+</div>
+<div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 grid grid-cols-2 gap-4">
+<div>
+<p class="text-xs text-slate-400 dark:text-slate-500 uppercase font-medium">Efectivo</p>
+<p class="font-semibold text-slate-700 dark:text-slate-300">RD$ 45,500</p>
+</div>
+<div>
+<p class="text-xs text-slate-400 dark:text-slate-500 uppercase font-medium">Transferencia</p>
+<p class="font-semibold text-slate-700 dark:text-slate-300">RD$ 100,000</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Workers List Section -->
+<div class="space-y-3">
+<div class="flex justify-between items-center px-1">
+<h3 class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Desglose por Trabajador</h3>
+<span class="text-xs text-slate-400">8 trabajadores</span>
+</div>
+<!-- Worker Item 1 (Paid) -->
+<div class="bg-white dark:bg-slate-800 rounded-xl p-4 flex items-center justify-between border border-slate-100 dark:border-slate-700 opacity-90">
+<div class="flex items-center gap-3">
+<div class="relative">
+<img alt="Profile photo of construction worker" class="w-10 h-10 rounded-full object-cover grayscale opacity-80" data-alt="Portrait of a male construction worker looking forward" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwAdTFF30aEVSSilu-nyyK1Ke6hDCDBN2V6ZZvu-0aYZ_Niyg3RIrwhOwWuEC6Na1QGF9Cvee55VcXV451EFhexocIn3HdeuN1L6OTcFHfwraQdY9NFMvDhR4sHez1skePCeWei6G48--JPN3GUs-pGTpMKyDsad9BCOeU6WqjVLS9B5SSplC4ouwPBNbwZSQ98mju9ZiMyG-_clz7lNKCFwP5T5_UlR0aUHDqfj-bwbqDfSE_qWofyAHwK90av19Cp8oFCcrdZh0"/>
+<div class="absolute -bottom-1 -right-1 bg-green-500 border-2 border-white dark:border-slate-800 rounded-full w-5 h-5 flex items-center justify-center">
+<span class="material-icons text-white text-[12px]">check</span>
+</div>
+</div>
+<div>
+<h4 class="font-semibold text-slate-700 dark:text-slate-200">Juan Pérez</h4>
+<p class="text-xs text-slate-500">Maestro Albañil</p>
+</div>
+</div>
+<div class="text-right">
+<span class="block font-bold text-slate-600 dark:text-slate-300">RD$ 15,000</span>
+<span class="text-[10px] uppercase font-bold text-slate-400 tracking-wide">Pagado</span>
+</div>
+</div>
+<!-- Worker Item 2 (Paid) -->
+<div class="bg-white dark:bg-slate-800 rounded-xl p-4 flex items-center justify-between border border-slate-100 dark:border-slate-700 opacity-90">
+<div class="flex items-center gap-3">
+<div class="relative">
+<img alt="Profile photo of construction worker smiling" class="w-10 h-10 rounded-full object-cover grayscale opacity-80" data-alt="Portrait of a smiling man in a white shirt" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAc0IDHctOtnJF6EX5Tam4nQyio2GSu_NCaReua0XyHLXofaMY0Bin-APawtMKlCGeBbq-3T2-qFbuX1kIfgf7YpfyRtDYa_Eswil9C3bg6sVu478JaDnxq7Ma-NNcf78O25vkYfR5y2p1h7mV3TFSRSJ1FPJ4o1Cl_gUdZhIwOTcvORGWBnGCrtbl98wK4X_0L2gwxExyTUxvBTMO3qLgwvbaqd6KKwlAsn3mkzjZZYaPqOKodkZ3vBTfaT-RAW5QpxeNBBYtEN9k"/>
+<div class="absolute -bottom-1 -right-1 bg-green-500 border-2 border-white dark:border-slate-800 rounded-full w-5 h-5 flex items-center justify-center">
+<span class="material-icons text-white text-[12px]">check</span>
+</div>
+</div>
+<div>
+<h4 class="font-semibold text-slate-700 dark:text-slate-200">Carlos Rodriguez</h4>
+<p class="text-xs text-slate-500">Carpintero</p>
+</div>
+</div>
+<div class="text-right">
+<span class="block font-bold text-slate-600 dark:text-slate-300">RD$ 12,500</span>
+<span class="text-[10px] uppercase font-bold text-slate-400 tracking-wide">Pagado</span>
+</div>
+</div>
+<!-- Worker Item 3 (Paid) -->
+<div class="bg-white dark:bg-slate-800 rounded-xl p-4 flex items-center justify-between border border-slate-100 dark:border-slate-700 opacity-90">
+<div class="flex items-center gap-3">
+<div class="relative">
+<img alt="Profile photo of worker looking serious" class="w-10 h-10 rounded-full object-cover grayscale opacity-80" data-alt="Portrait of a young man with a serious expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8oz-R-s9Q0K3kKp7OuJmKdnWNhDJQiaC7jXgIBBRjC6jsxbPgfZP7V9Y4M2v3Vuprh5Y-qcpFDLqU_5bzZGhtqgElkrSxnN5HfzwyWhqP1eiVUd9ocntdPLSapHyvVXVxBCocKnbDpLFgW3jVipJDvHUuKxR1SbQZyCQTMXbS1l7XKu2YRg-y9Y-5DVjJEfdEMUSV636ruCN8GUZp_H94Hkl_dme1ZVCdKcN-Z1RMoUbro8hrhSyEsV2F7rHHDT56AONkRJf1i60"/>
+<div class="absolute -bottom-1 -right-1 bg-green-500 border-2 border-white dark:border-slate-800 rounded-full w-5 h-5 flex items-center justify-center">
+<span class="material-icons text-white text-[12px]">check</span>
+</div>
+</div>
+<div>
+<h4 class="font-semibold text-slate-700 dark:text-slate-200">Miguel Angel</h4>
+<p class="text-xs text-slate-500">Ayudante</p>
+</div>
+</div>
+<div class="text-right">
+<span class="block font-bold text-slate-600 dark:text-slate-300">RD$ 8,000</span>
+<span class="text-[10px] uppercase font-bold text-slate-400 tracking-wide">Pagado</span>
+</div>
+</div>
+<!-- Worker Item 4 (Not Paid / Absent) -->
+<div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 flex items-center justify-between border border-dashed border-slate-200 dark:border-slate-700">
+<div class="flex items-center gap-3 opacity-60">
+<div class="relative">
+<div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-400">
+<span class="material-icons text-lg">person_off</span>
+</div>
+</div>
+<div>
+<h4 class="font-semibold text-slate-500 dark:text-slate-400 line-through decoration-slate-400">Roberto Diaz</h4>
+<p class="text-xs text-slate-400">Pintor</p>
+</div>
+</div>
+<div class="text-right">
+<span class="block font-medium text-slate-400 dark:text-slate-500">RD$ 0.00</span>
+<span class="text-[10px] uppercase font-bold text-red-400 dark:text-red-900/70 tracking-wide">Ausente</span>
+</div>
+</div>
+<!-- Worker Item 5 (Paid) -->
+<div class="bg-white dark:bg-slate-800 rounded-xl p-4 flex items-center justify-between border border-slate-100 dark:border-slate-700 opacity-90">
+<div class="flex items-center gap-3">
+<div class="relative">
+<img alt="Profile photo of older worker" class="w-10 h-10 rounded-full object-cover grayscale opacity-80" data-alt="Portrait of a mature man with a beard" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCt0nUSOV0bujtPKpfNwmKg07Av2qSQA6NuEbLtZBgCHBPfIN2MeGkZ-XnGdCzoN6bSr1MElVd4r19-Cy_I2hPJKVwlSVhZPYOoz2wPcOMP491SC30vRZwT1IPOQpwONw-w2ZpDBAoqAyU400uP64AmbM1khOQGZc-2vkfohfcE2TclKM7RexLjabFhLAkXBzQV2A0ad9NizBWZyZNTKBOVhkSM6k3Lp6uRAUVNtq4ouDycv-SD78Offm4AgPhbnI7nk33MvJ5aaTQ"/>
+<div class="absolute -bottom-1 -right-1 bg-green-500 border-2 border-white dark:border-slate-800 rounded-full w-5 h-5 flex items-center justify-center">
+<span class="material-icons text-white text-[12px]">check</span>
+</div>
+</div>
+<div>
+<h4 class="font-semibold text-slate-700 dark:text-slate-200">Pedro Martinez</h4>
+<p class="text-xs text-slate-500">Varillero</p>
+</div>
+</div>
+<div class="text-right">
+<span class="block font-bold text-slate-600 dark:text-slate-300">RD$ 10,000</span>
+<span class="text-[10px] uppercase font-bold text-slate-400 tracking-wide">Pagado</span>
+</div>
+</div>
+</div>
+<!-- Notes Section (Read Only) -->
+<div class="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+<h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Notas de la Semana</h3>
+<div class="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+<p class="text-sm text-slate-500 dark:text-slate-400 italic">"Pago realizado sin inconvenientes. Roberto faltó toda la semana por enfermedad. Se adelantó parte del pago a Juan para compra de materiales."</p>
+</div>
+</div>
+</main>
+<!-- Floating Bottom Action Bar -->
+<div class="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 z-30">
+<button class="w-full bg-primary hover:bg-primary-dark text-white font-medium py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]">
+<!-- WhatsApp SVG Icon -->
+<svg class="w-5 h-5 fill-current" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"></path>
+</svg>
+                Compartir Resumen
+            </button>
+</div>
+</div>
+</body></html>
