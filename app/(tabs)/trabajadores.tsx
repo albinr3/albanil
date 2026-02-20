@@ -140,15 +140,17 @@ export default function TrabajadoresScreen() {
                                 </View>
                                 <View style={styles.workerCardActions}>
                                     <TouchableOpacity style={styles.actionBtn}>
-                                        <MaterialIcons name="edit" size={22} color={Colors.textSecondary} />
+                                        <MaterialIcons name="visibility" size={22} color={Colors.textSecondary} />
                                     </TouchableOpacity>
-                                    <TouchableOpacity style={styles.actionBtn}>
-                                        <MaterialIcons
-                                            name={worker.activo ? 'block' : 'refresh'}
-                                            size={22}
-                                            color={worker.activo ? Colors.textSecondary : Colors.success}
-                                        />
-                                    </TouchableOpacity>
+                                    {!worker.activo && (
+                                        <TouchableOpacity style={styles.actionBtn}>
+                                            <MaterialIcons
+                                                name="block"
+                                                size={22}
+                                                color={Colors.danger}
+                                            />
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
                             </View>
                         </TouchableOpacity>

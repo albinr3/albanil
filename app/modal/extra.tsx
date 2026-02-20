@@ -15,8 +15,8 @@ const PRESETS = [
 
 export default function ExtraModal() {
     const router = useRouter();
-    const params = useLocalSearchParams<{ workerId: string; workerName: string }>();
-    const { setExtra } = useAppStore();
+    const params = useLocalSearchParams<{ workerId: string; workerName: string; date?: string }>();
+    const { setExtra, setExtraByDate } = useAppStore();
     const [selectedPreset, setSelectedPreset] = useState<number | null>(2); // Default "Medio día"
     const [customAmount, setCustomAmount] = useState('500');
     const [nota, setNota] = useState('');
@@ -32,10 +32,15 @@ export default function ExtraModal() {
         const monto = parseInt(customAmount) || 0;
         if (monto > 0 && params.workerId) {
             const preset = selectedPreset !== null ? PRESETS[selectedPreset] : null;
-            setExtra(params.workerId, {
+            const extra = {
                 monto,
                 nota: nota || preset?.label || 'Extra',
-            });
+            };
+            if (params.date) {
+                setExtraByDate(params.workerId, params.date, extra);
+            } else {
+                setExtra(params.workerId, extra);
+            }
         }
         router.back();
     };

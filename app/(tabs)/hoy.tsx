@@ -37,11 +37,19 @@ export default function HoyScreen() {
 
                 {/* Action Buttons */}
                 <View style={styles.actionRow}>
-                    <TouchableOpacity style={[styles.actionPrimary, Shadows.primaryButton]}>
+                    <TouchableOpacity
+                        style={[styles.actionPrimary, Shadows.primaryButton]}
+                        onPress={() => router.push('/modal/agregar-trabajador')}
+                        activeOpacity={0.85}
+                    >
                         <MaterialIcons name="person-add" size={22} color={Colors.textInverse} />
                         <Text style={styles.actionPrimaryText}>Trabajador</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionSecondary}>
+                    <TouchableOpacity
+                        style={styles.actionSecondary}
+                        onPress={() => router.push('/hoy/calendario')}
+                        activeOpacity={0.85}
+                    >
                         <MaterialIcons name="calendar-view-week" size={22} color={Colors.slate700} />
                         <Text style={styles.actionSecondaryText}>Ver semana</Text>
                     </TouchableOpacity>

@@ -20,7 +20,7 @@ const WORKER_HISTORY = [
 export default function TrabajadorDetailScreen() {
     const router = useRouter();
     const { id } = useLocalSearchParams<{ id: string }>();
-    const { workers } = useAppStore();
+    const { workers, deactivateWorker, addWorkerToWeek } = useAppStore();
     const worker = workers.find((w) => w.id === id);
     const [activeTab, setActiveTab] = useState<TabType>('historial');
 
@@ -156,11 +156,30 @@ export default function TrabajadorDetailScreen() {
 
             {/* Fixed Footer */}
             <View style={styles.footer}>
-                <TouchableOpacity style={styles.deactivateButton}>
-                    <MaterialIcons name="person-off" size={20} color={Colors.danger} />
-                    <Text style={styles.deactivateText}>Desactivar</Text>
+                <TouchableOpacity
+                    style={[styles.deactivateButton, !worker.activo && styles.activateButton]}
+                    onPress={() => {
+                        if (worker.activo) {
+                            deactivateWorker(worker.id);
+                        } else {
+                            addWorkerToWeek(worker.id);
+                        }
+                        router.back();
+                    }}
+                >
+                    <MaterialIcons
+                        name={worker.activo ? 'person-off' : 'person-add'}
+                        size={20}
+                        color={worker.activo ? Colors.danger : Colors.success}
+                    />
+                    <Text style={[styles.deactivateText, !worker.activo && styles.activateText]}>
+                        {worker.activo ? 'Desactivar' : 'Activar'}
+                    </Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.editButton, Shadows.primaryButton]}>
+                <TouchableOpacity
+                    style={[styles.editButton, Shadows.primaryButton]}
+                    onPress={() => router.push(`/trabajador/editar/${worker.id}`)}
+                >
                     <MaterialIcons name="edit" size={20} color={Colors.textInverse} />
                     <Text style={styles.editButtonText}>Editar Trabajador</Text>
                 </TouchableOpacity>
@@ -415,6 +434,13 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '600',
         color: Colors.danger,
+    },
+    activateButton: {
+        borderColor: 'rgba(34, 197, 94, 0.25)',
+        backgroundColor: '#dcfce7',
+    },
+    activateText: {
+        color: Colors.success,
     },
     editButton: {
         flex: 2,

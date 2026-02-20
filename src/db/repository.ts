@@ -173,6 +173,10 @@ export async function fetchWorkers(): Promise<Worker[]> {
 }
 
 export async function fetchTodayAttendance(): Promise<Record<string, AttendanceRecord>> {
+    return fetchAttendanceByDate(todayKey());
+}
+
+export async function fetchAttendanceByDate(date: string): Promise<Record<string, AttendanceRecord>> {
     const db = await getDb();
     const rows = await db.getAllAsync<AttendanceRow>(
         `
@@ -180,7 +184,7 @@ export async function fetchTodayAttendance(): Promise<Record<string, AttendanceR
         FROM attendance
         WHERE date = ?
     `,
-        todayKey()
+        date
     );
     return toAttendanceMap(rows);
 }
@@ -311,8 +315,11 @@ export async function loadAppSnapshot(): Promise<AppSnapshot> {
 }
 
 export async function toggleAttendanceForToday(workerId: string): Promise<void> {
+    await toggleAttendanceForDate(workerId, todayKey());
+}
+
+export async function toggleAttendanceForDate(workerId: string, date: string): Promise<void> {
     const db = await getDb();
-    const date = todayKey();
     const current = await db.getFirstAsync<{ worked: number }>(
         `
         SELECT worked
@@ -338,8 +345,11 @@ export async function toggleAttendanceForToday(workerId: string): Promise<void> 
 }
 
 export async function setExtraForToday(workerId: string, extra: ExtraPayment | undefined): Promise<void> {
+    await setExtraForDate(workerId, todayKey(), extra);
+}
+
+export async function setExtraForDate(workerId: string, date: string, extra: ExtraPayment | undefined): Promise<void> {
     const db = await getDb();
-    const date = todayKey();
     const monto = extra?.monto ?? null;
     const nota = extra?.nota ?? null;
 
@@ -436,6 +446,108 @@ export async function addWorkerRecord(worker: Worker): Promise<void> {
                 0
             );
         }
+    });
+}
+
+export async function activateWorkerForCurrentWeek(workerId: string): Promise<void> {
+    const db = await getDb();
+
+    await db.withTransactionAsync(async () => {
+        const worker = await db.getFirstAsync<{ tarifa: number }>(
+            `
+            SELECT tarifa
+            FROM workers
+            WHERE id = ?
+            LIMIT 1
+        `,
+            workerId
+        );
+
+        if (!worker) return;
+
+        await db.runAsync(
+            `
+            UPDATE workers
+            SET activo = 1
+            WHERE id = ?
+        `,
+            workerId
+        );
+
+        const weekId = await getCurrentWeekId(db);
+        if (!weekId) return;
+
+        await db.runAsync(
+            `
+            INSERT INTO payroll_entries (id, week_id, worker_id, dias_trabajados, tarifa, extras, adelantos)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(week_id, worker_id) DO NOTHING
+        `,
+            `${weekId}-${workerId}`,
+            weekId,
+            workerId,
+            5,
+            Number(worker.tarifa),
+            0,
+            0
+        );
+    });
+}
+
+export async function deactivateWorkerRecord(workerId: string): Promise<void> {
+    const db = await getDb();
+    await db.runAsync(
+        `
+        UPDATE workers
+        SET activo = 0
+        WHERE id = ?
+    `,
+        workerId
+    );
+}
+
+export async function updateWorkerRecord(input: {
+    id: string;
+    apodo: string;
+    nombreCompleto: string;
+    tarifa: number;
+    tipo: Worker['tipo'];
+    iniciales: string;
+}): Promise<void> {
+    const db = await getDb();
+    await db.withTransactionAsync(async () => {
+        await db.runAsync(
+            `
+            UPDATE workers
+            SET
+                apodo = ?,
+                nombre_completo = ?,
+                tarifa = ?,
+                tipo = ?,
+                iniciales = ?
+            WHERE id = ?
+        `,
+            input.apodo,
+            input.nombreCompleto,
+            input.tarifa,
+            input.tipo,
+            input.iniciales,
+            input.id
+        );
+
+        const weekId = await getCurrentWeekId(db);
+        if (!weekId) return;
+
+        await db.runAsync(
+            `
+            UPDATE payroll_entries
+            SET tarifa = ?
+            WHERE week_id = ? AND worker_id = ?
+        `,
+            input.tarifa,
+            weekId,
+            input.id
+        );
     });
 }
 
