@@ -1,6 +1,15 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const DB_VERSION = 1;
+const DB_VERSION = 3;
+
+interface TableInfoRow {
+    name: string;
+}
+
+async function hasColumn(db: SQLiteDatabase, tableName: string, columnName: string): Promise<boolean> {
+    const rows = await db.getAllAsync<TableInfoRow>(`PRAGMA table_info(${tableName});`);
+    return rows.some((row) => row.name === columnName);
+}
 
 export async function createSchema(db: SQLiteDatabase): Promise<void> {
     await db.execAsync('PRAGMA foreign_keys = ON;');
@@ -38,6 +47,7 @@ export async function createSchema(db: SQLiteDatabase): Promise<void> {
             worker_iniciales TEXT NOT NULL,
             avatar_color_index INTEGER NOT NULL,
             monto REAL NOT NULL,
+            saldo_pendiente REAL NOT NULL DEFAULT 0,
             nota TEXT NOT NULL DEFAULT '',
             fecha_iso TEXT NOT NULL,
             estado TEXT NOT NULL CHECK (estado IN ('pendiente','parcial','descontado')),
@@ -68,10 +78,33 @@ export async function createSchema(db: SQLiteDatabase): Promise<void> {
             tarifa REAL NOT NULL,
             extras REAL NOT NULL DEFAULT 0,
             adelantos REAL NOT NULL DEFAULT 0,
+            adelantos_override INTEGER NOT NULL DEFAULT 0 CHECK (adelantos_override IN (0,1)),
             FOREIGN KEY (week_id) REFERENCES payroll_weeks(week_id) ON DELETE CASCADE,
             FOREIGN KEY (worker_id) REFERENCES workers(id) ON DELETE CASCADE,
             UNIQUE (week_id, worker_id)
         );
+    `);
+
+    if (!(await hasColumn(db, 'advances', 'saldo_pendiente'))) {
+        await db.execAsync(`
+            ALTER TABLE advances
+            ADD COLUMN saldo_pendiente REAL NOT NULL DEFAULT 0;
+        `);
+    }
+    if (!(await hasColumn(db, 'payroll_entries', 'adelantos_override'))) {
+        await db.execAsync(`
+            ALTER TABLE payroll_entries
+            ADD COLUMN adelantos_override INTEGER NOT NULL DEFAULT 0 CHECK (adelantos_override IN (0,1));
+        `);
+    }
+
+    await db.execAsync(`
+        UPDATE advances
+        SET saldo_pendiente = CASE
+            WHEN estado = 'descontado' THEN 0
+            ELSE monto
+        END
+        WHERE saldo_pendiente = 0 AND estado != 'descontado';
     `);
 
     await db.execAsync('CREATE INDEX IF NOT EXISTS idx_advances_fecha ON advances(fecha_iso DESC);');

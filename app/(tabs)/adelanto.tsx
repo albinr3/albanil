@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppStore } from '../../src/store/AppContext';
+import { fetchLastWorkedDates } from '../../src/db/repository';
 import { Avatar } from '../../src/components/Avatar';
 import { Chip } from '../../src/components/Chip';
 import { Colors, Spacing, BorderRadius, Shadows } from '../../src/theme';
@@ -11,10 +12,33 @@ import { formatMoney, formatDateShort } from '../../src/utils';
 export default function AdelantoScreen() {
     const { workers, advances, addAdvance } = useAppStore();
     const activeWorkers = workers.filter((w) => w.activo);
+    const [lastWorkedByWorkerId, setLastWorkedByWorkerId] = useState<Record<string, string>>({});
     const [selectedWorker, setSelectedWorker] = useState('');
     const [amount, setAmount] = useState('');
     const [nota, setNota] = useState('');
     const [showPicker, setShowPicker] = useState(false);
+
+    useEffect(() => {
+        let mounted = true;
+        void (async () => {
+            const rows = await fetchLastWorkedDates();
+            if (mounted) setLastWorkedByWorkerId(rows);
+        })();
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    const sortedActiveWorkers = useMemo(() => {
+        return [...activeWorkers].sort((a, b) => {
+            const aLast = lastWorkedByWorkerId[a.id] ?? '';
+            const bLast = lastWorkedByWorkerId[b.id] ?? '';
+            if (aLast !== bLast) {
+                return bLast.localeCompare(aLast);
+            }
+            return a.apodo.localeCompare(b.apodo, 'es');
+        });
+    }, [activeWorkers, lastWorkedByWorkerId]);
 
     const handleSubmit = () => {
         if (!selectedWorker || !amount) return;
@@ -43,6 +67,9 @@ export default function AdelantoScreen() {
             default: return estado;
         }
     };
+
+    const advanceAmountToShow = (estado: string, monto: number, saldoPendiente: number) =>
+        estado === 'descontado' ? monto : saldoPendiente;
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -83,7 +110,7 @@ export default function AdelantoScreen() {
 
                     {showPicker && (
                         <View style={styles.pickerDropdown}>
-                            {activeWorkers.map((w) => (
+                            {sortedActiveWorkers.map((w) => (
                                 <TouchableOpacity
                                     key={w.id}
                                     style={[styles.pickerItem, w.id === selectedWorker && styles.pickerItemActive]}
@@ -159,7 +186,9 @@ export default function AdelantoScreen() {
                                     </View>
                                 </View>
                                 <View style={styles.advanceItemRight}>
-                                    <Text style={styles.advanceItemAmount}>{formatMoney(adv.monto)}</Text>
+                                    <Text style={styles.advanceItemAmount}>
+                                        {formatMoney(advanceAmountToShow(adv.estado, adv.monto, adv.saldoPendiente))}
+                                    </Text>
                                     <Chip label={chipLabel(adv.estado)} variant={chipVariant(adv.estado)} small />
                                 </View>
                             </View>

@@ -44,9 +44,9 @@ export function WorkerCard({ worker, attendance, onToggle, onExtraPress }: Worke
                             style={[
                                 styles.toggleButton,
                                 !isWorked && styles.toggleButtonActive,
-                                !isWorked && { backgroundColor: Colors.slate500 },
+                                !isWorked && { backgroundColor: Colors.danger },
                             ]}
-                            onPress={isWorked ? onToggle : undefined}
+                            onPress={onToggle}
                             activeOpacity={0.7}
                         >
                             {!isWorked && <MaterialIcons name="close" size={14} color={Colors.textInverse} />}
@@ -65,7 +65,7 @@ export function WorkerCard({ worker, attendance, onToggle, onExtraPress }: Worke
                                 isWorked && styles.toggleButtonActive,
                                 isWorked && { backgroundColor: Colors.primary },
                             ]}
-                            onPress={!isWorked ? onToggle : undefined}
+                            onPress={onToggle}
                             activeOpacity={0.7}
                         >
                             {isWorked && <MaterialIcons name="check" size={14} color={Colors.textInverse} />}
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 4,
         paddingHorizontal: 14,
-        paddingVertical: 10,
+        paddingVertical: 12,
         borderRadius: 8,
     },
     toggleButtonActive: {

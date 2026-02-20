@@ -1,28 +1,49 @@
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppStore } from '../../src/store/AppContext';
 import { Chip } from '../../src/components/Chip';
+import { fetchWorkerPayrollHistory } from '../../src/db/repository';
+import type { EstadoAdelanto } from '../../src/store/types';
 import { Colors, Spacing, BorderRadius, Shadows } from '../../src/theme';
-import { formatMoney } from '../../src/utils';
+import { formatDateShort, formatMoney } from '../../src/utils';
 
 type TabType = 'historial' | 'adelantos';
-
-// Dummy history
-const WORKER_HISTORY = [
-    { weekLabel: 'Semana 12-18 Oct', dias: 5.5, total: 6600, pagado: true },
-    { weekLabel: 'Semana 05-11 Oct', dias: 6, total: 7200, pagado: true },
-    { weekLabel: 'Semana 28 Sep - 04 Oct', dias: 4, total: 4800, pagado: true },
-];
 
 export default function TrabajadorDetailScreen() {
     const router = useRouter();
     const { id } = useLocalSearchParams<{ id: string }>();
-    const { workers, deactivateWorker, addWorkerToWeek } = useAppStore();
+    const { workers, advances, deactivateWorker, addWorkerToWeek } = useAppStore();
     const worker = workers.find((w) => w.id === id);
     const [activeTab, setActiveTab] = useState<TabType>('historial');
+    const [historyRows, setHistoryRows] = useState<
+        Array<{
+            weekId: string;
+            weekLabel: string;
+            dateRange: string;
+            pagada: boolean;
+            diasTrabajados: number;
+            tarifa: number;
+            totalPagar: number;
+        }>
+    >([]);
+
+    const loadHistory = useCallback(async () => {
+        if (!id) {
+            setHistoryRows([]);
+            return;
+        }
+        const rows = await fetchWorkerPayrollHistory(id);
+        setHistoryRows(rows);
+    }, [id]);
+
+    useFocusEffect(
+        useCallback(() => {
+            void loadHistory();
+        }, [loadHistory])
+    );
 
     if (!worker) {
         return (
@@ -33,6 +54,25 @@ export default function TrabajadorDetailScreen() {
     }
 
     const rolLabel = worker.rol.charAt(0).toUpperCase() + worker.rol.slice(1);
+    const pendingAdvances = useMemo(
+        () => advances.filter((advance) => advance.workerId === worker.id && advance.estado !== 'descontado'),
+        [advances, worker.id]
+    );
+    const deudaPendiente = useMemo(
+        () => pendingAdvances.reduce((acc, advance) => acc + advance.saldoPendiente, 0),
+        [pendingAdvances]
+    );
+
+    const advanceLabel = (estado: EstadoAdelanto) => {
+        if (estado === 'parcial') return 'Parcial';
+        if (estado === 'descontado') return 'Descontado';
+        return 'Pendiente';
+    };
+    const advanceVariant = (estado: EstadoAdelanto) => {
+        if (estado === 'parcial') return 'warning';
+        if (estado === 'descontado') return 'success';
+        return 'info';
+    };
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -57,9 +97,9 @@ export default function TrabajadorDetailScreen() {
                             </View>
                             {worker.activo && <View style={styles.activeDot} />}
                         </View>
-                        <View>
-                            <Text style={styles.profileName}>{worker.apodo}</Text>
-                            <Text style={styles.profileFullName}>{worker.nombreCompleto}</Text>
+                        <View style={styles.profileInfo}>
+                            <Text style={styles.profileName} numberOfLines={1} ellipsizeMode="tail">{worker.apodo}</Text>
+                            <Text style={styles.profileFullName} numberOfLines={1} ellipsizeMode="tail">{worker.nombreCompleto}</Text>
                             <View style={styles.profileRoleRow}>
                                 <MaterialIcons name="engineering" size={16} color={Colors.textTertiary} />
                                 <Text style={styles.profileRole}>{rolLabel}</Text>
@@ -84,9 +124,11 @@ export default function TrabajadorDetailScreen() {
                         <View style={[styles.tile, styles.tileDebt]}>
                             <Text style={[styles.tileLabel, { color: Colors.danger }]}>DEUDA</Text>
                             <Text style={[styles.tileValue, { color: Colors.danger }]}>
-                                {formatMoney(1500)}
+                                {formatMoney(deudaPendiente)}
                             </Text>
-                            <Text style={[styles.tileSuffix, { color: Colors.danger }]}>Pendiente</Text>
+                            <Text style={[styles.tileSuffix, { color: Colors.danger }]}>
+                                {deudaPendiente > 0 ? 'Pendiente' : 'Sin deuda'}
+                            </Text>
                         </View>
                     </View>
                 </View>
@@ -117,22 +159,36 @@ export default function TrabajadorDetailScreen() {
                         <View style={styles.listSection}>
                             <Text style={styles.listSectionTitle}>ÚLTIMAS SEMANAS</Text>
                             <View style={styles.historyList}>
-                                {WORKER_HISTORY.map((item, i) => (
-                                    <TouchableOpacity key={i} style={[styles.historyItem, Shadows.card]} activeOpacity={0.7}>
+                                {historyRows.length === 0 && (
+                                    <View style={styles.emptyState}>
+                                        <MaterialIcons name="history" size={48} color={Colors.slate300} />
+                                        <Text style={styles.emptyStateText}>No hay historial para este trabajador</Text>
+                                    </View>
+                                )}
+                                {historyRows.map((item) => (
+                                    <TouchableOpacity key={item.weekId} style={[styles.historyItem, Shadows.card]} activeOpacity={0.7}>
                                         <View style={styles.historyLeft}>
                                             <View style={styles.historyIcon}>
                                                 <MaterialIcons name="calendar-month" size={22} color={Colors.primary} />
                                             </View>
-                                            <View>
-                                                <Text style={styles.historyWeek}>{item.weekLabel}</Text>
-                                                <Text style={styles.historyDays}>{item.dias} días trabajados</Text>
+                                            <View style={styles.historyMain}>
+                                                <Text style={styles.historyWeek} numberOfLines={1} ellipsizeMode="tail">{item.weekLabel}</Text>
+                                                <Text style={styles.historyDays} numberOfLines={1} ellipsizeMode="tail">
+                                                    {item.dateRange} • {item.diasTrabajados} días x {formatMoney(item.tarifa)}
+                                                </Text>
                                             </View>
                                         </View>
                                         <View style={styles.historyRight}>
-                                            <Text style={styles.historyTotal}>{formatMoney(item.total)}</Text>
-                                            {item.pagado && (
-                                                <View style={styles.paidDot} />
-                                            )}
+                                            <Text
+                                                style={styles.historyTotal}
+                                                numberOfLines={1}
+                                                ellipsizeMode="tail"
+                                                adjustsFontSizeToFit
+                                                minimumFontScale={0.75}
+                                            >
+                                                {formatMoney(item.totalPagar)}
+                                            </Text>
+                                            {item.pagada && <View style={styles.paidDot} />}
                                         </View>
                                     </TouchableOpacity>
                                 ))}
@@ -143,9 +199,35 @@ export default function TrabajadorDetailScreen() {
                     {activeTab === 'adelantos' && (
                         <View style={styles.listSection}>
                             <Text style={styles.listSectionTitle}>ADELANTOS PENDIENTES</Text>
-                            <View style={styles.emptyState}>
-                                <MaterialIcons name="request-quote" size={48} color={Colors.slate300} />
-                                <Text style={styles.emptyStateText}>No hay adelantos pendientes</Text>
+                            <View style={styles.advanceList}>
+                                {pendingAdvances.length === 0 && (
+                                    <View style={styles.emptyState}>
+                                        <MaterialIcons name="request-quote" size={48} color={Colors.slate300} />
+                                        <Text style={styles.emptyStateText}>No hay adelantos pendientes</Text>
+                                    </View>
+                                )}
+                                {pendingAdvances.map((advance) => (
+                                    <View key={advance.id} style={[styles.advanceItem, Shadows.card]}>
+                                        <View style={styles.advanceLeft}>
+                                            <Text style={styles.advanceTitle} numberOfLines={1} ellipsizeMode="tail">
+                                                {advance.nota.trim() || 'Adelanto'}
+                                            </Text>
+                                            <Text style={styles.advanceMeta} numberOfLines={1} ellipsizeMode="tail">
+                                                {formatDateShort(advance.fecha)}
+                                            </Text>
+                                        </View>
+                                        <View style={styles.advanceRight}>
+                                            <Text style={styles.advanceAmount} numberOfLines={1} ellipsizeMode="tail">
+                                                {formatMoney(advance.saldoPendiente)}
+                                            </Text>
+                                            <Chip
+                                                label={advanceLabel(advance.estado)}
+                                                variant={advanceVariant(advance.estado)}
+                                                small
+                                            />
+                                        </View>
+                                    </View>
+                                ))}
                             </View>
                         </View>
                     )}
@@ -227,6 +309,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 20,
     },
+    profileInfo: {
+        flex: 1,
+        minWidth: 0,
+    },
     avatarContainer: {
         position: 'relative',
     },
@@ -302,15 +388,18 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
         letterSpacing: 0.5,
         marginBottom: 4,
+        textAlign: 'center',
     },
     tileValue: {
         fontSize: 18,
         fontWeight: '700',
         color: Colors.primary,
+        textAlign: 'center',
     },
     tileSuffix: {
         fontSize: 10,
         color: Colors.textTertiary,
+        textAlign: 'center',
     },
     tabsOuter: {
         paddingHorizontal: Spacing.base,
@@ -368,6 +457,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'flex-start',
         gap: 12,
+        flex: 1,
+        minWidth: 0,
+    },
+    historyMain: {
+        flex: 1,
+        minWidth: 0,
     },
     historyIcon: {
         backgroundColor: Colors.infoLight,
@@ -386,11 +481,17 @@ const styles = StyleSheet.create({
     },
     historyRight: {
         alignItems: 'flex-end',
+        marginLeft: 10,
+        flexShrink: 1,
+        maxWidth: '36%',
+        minWidth: 82,
     },
     historyTotal: {
-        fontSize: 18,
+        fontSize: 17,
         fontWeight: '700',
         color: Colors.text,
+        textAlign: 'right',
+        width: '100%',
     },
     paidDot: {
         width: 8,
@@ -407,6 +508,46 @@ const styles = StyleSheet.create({
     emptyStateText: {
         fontSize: 16,
         color: Colors.textTertiary,
+    },
+    advanceList: {
+        gap: 12,
+    },
+    advanceItem: {
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.lg,
+        padding: Spacing.base,
+        borderWidth: 1,
+        borderColor: Colors.borderLight,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    advanceLeft: {
+        gap: 4,
+        flex: 1,
+        paddingRight: 8,
+    },
+    advanceTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: Colors.text,
+    },
+    advanceMeta: {
+        fontSize: 13,
+        color: Colors.textSecondary,
+    },
+    advanceRight: {
+        alignItems: 'flex-end',
+        gap: 6,
+        marginLeft: 10,
+        flexShrink: 0,
+        minWidth: 90,
+    },
+    advanceAmount: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: Colors.text,
+        textAlign: 'right',
     },
     footer: {
         flexDirection: 'row',

@@ -11,16 +11,17 @@ import {
     View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppStore } from '../../src/store/AppContext';
 import { BorderRadius, Colors, Shadows, Spacing } from '../../src/theme';
+import { SCREEN_SAFE_AREA_EDGES, useStickyFooterLayout } from '../../src/ui/safeArea';
 
 type TipoTrabajador = 'fijo' | 'por_dias';
 
 export default function NuevoTrabajadorScreen() {
     const router = useRouter();
-    const insets = useSafeAreaInsets();
+    const { scrollContentPaddingBottom, footerPaddingBottom } = useStickyFooterLayout(148, 12);
     const { addWorker } = useAppStore();
 
     const [apodo, setApodo] = useState('');
@@ -43,7 +44,7 @@ export default function NuevoTrabajadorScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <SafeAreaView style={styles.safeArea} edges={SCREEN_SAFE_AREA_EDGES}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={styles.flex}
@@ -64,7 +65,7 @@ export default function NuevoTrabajadorScreen() {
 
                 <ScrollView
                     style={styles.scroll}
-                    contentContainerStyle={[styles.scrollContent, { paddingBottom: 148 + insets.bottom }]}
+                    contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollContentPaddingBottom }]}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
@@ -148,7 +149,7 @@ export default function NuevoTrabajadorScreen() {
                     </View>
                 </ScrollView>
 
-                <View style={[styles.footer, { paddingBottom: Math.max(12, insets.bottom) }]}>
+                <View style={[styles.footer, { paddingBottom: footerPaddingBottom }]}>
                     <TouchableOpacity
                         style={[styles.saveBtn, !canSave && styles.saveBtnDisabled, Shadows.primaryButton]}
                         onPress={handleSave}

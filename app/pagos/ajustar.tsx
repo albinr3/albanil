@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppStore } from '../../src/store/AppContext';
 import { Avatar } from '../../src/components/Avatar';
 import { BorderRadius, Colors, Shadows, Spacing } from '../../src/theme';
+import { SCREEN_SAFE_AREA_EDGES, useStickyFooterLayout } from '../../src/ui/safeArea';
 import { formatMoney } from '../../src/utils';
 
 function toCurrencyInput(raw: string): string {
@@ -20,7 +21,7 @@ function toNumber(raw: string): number {
 
 export default function AjustarPagosScreen() {
     const router = useRouter();
-    const insets = useSafeAreaInsets();
+    const { scrollContentPaddingBottom, footerPaddingBottom } = useStickyFooterLayout(190, Spacing.base);
     const { workerId } = useLocalSearchParams<{ workerId?: string }>();
     const { getPayroll, setPayrollAdjustment } = useAppStore();
     const payroll = getPayroll();
@@ -34,7 +35,7 @@ export default function AjustarPagosScreen() {
 
     if (!selectedWorker) {
         return (
-            <SafeAreaView style={styles.container} edges={['top']}>
+            <SafeAreaView style={styles.container} edges={SCREEN_SAFE_AREA_EDGES}>
                 <View style={styles.header}>
                     <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
                         <MaterialIcons name="chevron-left" size={28} color={Colors.primary} />
@@ -60,7 +61,7 @@ export default function AjustarPagosScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={styles.container} edges={SCREEN_SAFE_AREA_EDGES}>
             <View style={styles.header}>
                 <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
                     <MaterialIcons name="chevron-left" size={28} color={Colors.primary} />
@@ -71,7 +72,7 @@ export default function AjustarPagosScreen() {
 
             <ScrollView
                 style={styles.scroll}
-                contentContainerStyle={[styles.scrollContent, { paddingBottom: 190 + insets.bottom }]}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollContentPaddingBottom }]}
                 showsVerticalScrollIndicator={false}
             >
                 <View style={[styles.card, Shadows.card]}>
@@ -130,7 +131,7 @@ export default function AjustarPagosScreen() {
                 </View>
             </ScrollView>
 
-            <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, Spacing.base) }]}>
+            <View style={[styles.footer, { paddingBottom: footerPaddingBottom }]}>
                 <TouchableOpacity style={[styles.saveButton, Shadows.primaryButton]} onPress={onSave} activeOpacity={0.85}>
                     <MaterialIcons name="save" size={20} color={Colors.textInverse} />
                     <Text style={styles.saveButtonText}>Guardar ajustes</Text>

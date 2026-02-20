@@ -32,6 +32,7 @@ export interface Advance {
     workerApodo: string;
     workerIniciales: string;
     monto: number;
+    saldoPendiente: number;
     nota: string;
     fecha: Date;
     estado: EstadoAdelanto;

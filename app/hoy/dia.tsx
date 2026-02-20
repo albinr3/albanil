@@ -7,6 +7,7 @@ import { useAppStore } from '../../src/store/AppContext';
 import { fetchAttendanceByDate } from '../../src/db/repository';
 import type { AttendanceRecord, Worker } from '../../src/store/types';
 import { BorderRadius, Colors, Shadows, Spacing } from '../../src/theme';
+import { SCREEN_SAFE_AREA_EDGES, useStickyFooterLayout } from '../../src/ui/safeArea';
 import { formatMoney } from '../../src/utils';
 
 function toReadableDate(iso: string): string {
@@ -33,6 +34,7 @@ function buildWorkersForDate(workers: Worker[], attendance: Record<string, Atten
 
 export default function DiaDetalleScreen() {
     const router = useRouter();
+    const { scrollContentPaddingBottom, footerPaddingBottom } = useStickyFooterLayout(140, Spacing.base);
     const { date } = useLocalSearchParams<{ date: string }>();
     const { workers } = useAppStore();
     const [attendanceByDate, setAttendanceByDate] = useState<Record<string, AttendanceRecord>>({});
@@ -64,14 +66,21 @@ export default function DiaDetalleScreen() {
         return buildWorkersForDate(workers, attendanceByDate, date);
     }, [workers, attendanceByDate, date]);
 
-    const rows = dayWorkers.map((worker) => {
-        const key = `${worker.id}-${date}`;
-        const attendance = attendanceByDate[key] || { workerId: worker.id, date: date || '', worked: false };
-        return { worker, attendance };
-    });
+    const rows = dayWorkers
+        .map((worker) => {
+            const key = `${worker.id}-${date}`;
+            const attendance = attendanceByDate[key] || { workerId: worker.id, date: date || '', worked: false };
+            return { worker, attendance };
+        })
+        .sort((a, b) => {
+            if (a.attendance.worked !== b.attendance.worked) {
+                return a.attendance.worked ? -1 : 1;
+            }
+            return a.worker.apodo.localeCompare(b.worker.apodo, 'es');
+        });
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={styles.container} edges={SCREEN_SAFE_AREA_EDGES}>
             <View style={styles.header}>
                 <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()}>
                     <MaterialIcons name="arrow-back" size={22} color={Colors.slate700} />
@@ -80,7 +89,10 @@ export default function DiaDetalleScreen() {
                 <View style={styles.iconBtn} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                contentContainerStyle={[styles.content, { paddingBottom: scrollContentPaddingBottom }]}
+                showsVerticalScrollIndicator={false}
+            >
                 <Text style={styles.dateTitle}>{date ? toReadableDate(date) : ''}</Text>
                 <Text style={styles.readOnlyBadge}>Solo lectura</Text>
 
@@ -118,7 +130,7 @@ export default function DiaDetalleScreen() {
                 </View>
             </ScrollView>
 
-            <View style={styles.footer}>
+            <View style={[styles.footer, { paddingBottom: footerPaddingBottom }]}>
                 <TouchableOpacity
                     style={styles.editButton}
                     onPress={() =>
@@ -159,7 +171,6 @@ const styles = StyleSheet.create({
     title: { fontSize: 20, fontWeight: '700', color: Colors.text },
     content: {
         padding: Spacing.base,
-        paddingBottom: 140,
     },
     dateTitle: {
         fontSize: 26,
@@ -225,7 +236,8 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        padding: Spacing.base,
+        paddingHorizontal: Spacing.base,
+        paddingTop: Spacing.base,
         backgroundColor: Colors.surface,
         borderTopWidth: 1,
         borderTopColor: Colors.border,

@@ -8,6 +8,7 @@ import { fetchAttendanceByDate, toggleAttendanceForDate } from '../../src/db/rep
 import { useAppStore } from '../../src/store/AppContext';
 import type { AttendanceRecord, Worker } from '../../src/store/types';
 import { BorderRadius, Colors, Spacing } from '../../src/theme';
+import { SCREEN_SAFE_AREA_EDGES, useStickyFooterLayout } from '../../src/ui/safeArea';
 import { showToast } from '../../src/ui/toast';
 
 function toReadableDate(iso: string): string {
@@ -34,6 +35,7 @@ function buildWorkersForDate(workers: Worker[], attendance: Record<string, Atten
 
 export default function HoyEditarScreen() {
     const router = useRouter();
+    const { scrollContentPaddingBottom, footerPaddingBottom } = useStickyFooterLayout(120, Spacing.base);
     const { date } = useLocalSearchParams<{ date: string }>();
     const { workers } = useAppStore();
     const [attendanceByDate, setAttendanceByDate] = useState<Record<string, AttendanceRecord>>({});
@@ -79,7 +81,7 @@ export default function HoyEditarScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={styles.container} edges={SCREEN_SAFE_AREA_EDGES}>
             <View style={styles.header}>
                 <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()}>
                     <MaterialIcons name="arrow-back" size={22} color={Colors.slate700} />
@@ -88,7 +90,10 @@ export default function HoyEditarScreen() {
                 <View style={styles.iconBtn} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                contentContainerStyle={[styles.content, { paddingBottom: scrollContentPaddingBottom }]}
+                showsVerticalScrollIndicator={false}
+            >
                 <Text style={styles.dateTitle}>{date ? toReadableDate(date) : ''}</Text>
 
                 <View style={styles.infoBanner}>
@@ -115,7 +120,7 @@ export default function HoyEditarScreen() {
                 </View>
             </ScrollView>
 
-            <View style={styles.footer}>
+            <View style={[styles.footer, { paddingBottom: footerPaddingBottom }]}>
                 <TouchableOpacity
                     style={styles.saveButton}
                     onPress={() => {
@@ -157,7 +162,6 @@ const styles = StyleSheet.create({
     title: { fontSize: 20, fontWeight: '700', color: Colors.text },
     content: {
         padding: Spacing.base,
-        paddingBottom: 120,
     },
     dateTitle: {
         fontSize: 24,
@@ -184,7 +188,8 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        padding: Spacing.base,
+        paddingHorizontal: Spacing.base,
+        paddingTop: Spacing.base,
         borderTopWidth: 1,
         borderTopColor: Colors.border,
         backgroundColor: Colors.surface,

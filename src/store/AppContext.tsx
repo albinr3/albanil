@@ -22,6 +22,7 @@ import {
     fetchWorkers,
     loadAppSnapshot,
     markCurrentWeekAsPaid,
+    unmarkCurrentWeekAsPaid,
     payrollToAdjustments,
     setCurrentWeekPayrollAdjustment,
     setExtraForToday,
@@ -60,7 +61,8 @@ interface AppState {
         tipo: Worker['tipo'];
     }) => void;
     setPayrollAdjustment: (workerId: string, extras: number, adelantos: number) => void;
-    markWeekPaid: () => void;
+    markWeekPaid: () => Promise<boolean>;
+    unmarkWeekPaid: () => Promise<boolean>;
     getAttendance: (workerId: string) => AttendanceRecord;
     getAttendanceByDate: (workerId: string, date: string) => AttendanceRecord;
     getPayroll: () => WeekPayroll;
@@ -90,6 +92,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const [weekHistory, setWeekHistory] = useState<WeekHistoryEntry[]>([]);
     const [payrollAdjustments, setPayrollAdjustments] = useState<Record<string, { extras: number; adelantos: number }>>({});
     const [payroll, setPayroll] = useState<WeekPayroll>(EMPTY_PAYROLL);
+
+    const refreshPayrollState = useCallback(async () => {
+        const nextPayroll = await fetchCurrentPayroll();
+        setPayroll(nextPayroll);
+        setPayrollAdjustments(payrollToAdjustments(nextPayroll));
+        setWeekPagada(nextPayroll.pagada);
+    }, []);
 
     useEffect(() => {
         let isActive = true;
@@ -136,7 +145,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             void (async () => {
                 try {
                     await toggleAttendanceForToday(workerId);
-                    const nextAttendance = await fetchTodayAttendance();
+                    const [nextAttendance] = await Promise.all([
+                        fetchTodayAttendance(),
+                        refreshPayrollState(),
+                    ]);
                     setAttendance(nextAttendance);
                     const worked = nextAttendance[`${workerId}-${todayKey()}`]?.worked ?? false;
                     showToast({
@@ -154,7 +166,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 }
             })();
         },
-        [isDbReady]
+        [isDbReady, refreshPayrollState]
     );
 
     const toggleAttendanceByDate = useCallback(
@@ -164,6 +176,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             void (async () => {
                 try {
                     await toggleAttendanceForDate(workerId, date);
+                    await refreshPayrollState();
                     if (date === todayKey()) {
                         const nextAttendance = await fetchTodayAttendance();
                         setAttendance(nextAttendance);
@@ -183,7 +196,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 }
             })();
         },
-        [isDbReady]
+        [isDbReady, refreshPayrollState]
     );
 
     const setExtra = useCallback(
@@ -192,7 +205,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             void (async () => {
                 try {
                     await setExtraForToday(workerId, extra);
-                    const nextAttendance = await fetchTodayAttendance();
+                    const [nextAttendance] = await Promise.all([
+                        fetchTodayAttendance(),
+                        refreshPayrollState(),
+                    ]);
                     setAttendance(nextAttendance);
                     showToast({
                         type: 'success',
@@ -209,7 +225,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 }
             })();
         },
-        [isDbReady]
+        [isDbReady, refreshPayrollState]
     );
 
     const setExtraByDate = useCallback(
@@ -219,6 +235,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             void (async () => {
                 try {
                     await setExtraForDate(workerId, date, extra);
+                    await refreshPayrollState();
                     if (date === todayKey()) {
                         const nextAttendance = await fetchTodayAttendance();
                         setAttendance(nextAttendance);
@@ -238,7 +255,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 }
             })();
         },
-        [isDbReady]
+        [isDbReady, refreshPayrollState]
     );
 
     const addAdvance = useCallback(
@@ -259,7 +276,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                         monto,
                         nota,
                     });
-                    const nextAdvances = await fetchAdvances();
+                    const [nextAdvances] = await Promise.all([
+                        fetchAdvances(),
+                        refreshPayrollState(),
+                    ]);
                     setAdvances(nextAdvances);
                     showToast({
                         type: 'success',
@@ -276,7 +296,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 }
             })();
         },
-        [isDbReady, workers]
+        [isDbReady, workers, refreshPayrollState]
     );
 
     const addWorker = useCallback(
@@ -499,33 +519,66 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         [isDbReady]
     );
 
-    const markWeekPaid = useCallback(() => {
-        if (!isDbReady) return;
-        void (async () => {
-            try {
-                await markCurrentWeekAsPaid();
-                const [nextPayroll, nextHistory] = await Promise.all([
-                    fetchCurrentPayroll(),
-                    fetchWeekHistory(),
-                ]);
-                setPayroll(nextPayroll);
-                setWeekPagada(nextPayroll.pagada);
-                setPayrollAdjustments(payrollToAdjustments(nextPayroll));
-                setWeekHistory(nextHistory);
-                showToast({
-                    type: 'success',
-                    title: 'Semana pagada',
-                    message: 'La semana actual fue marcada como pagada.',
-                });
-            } catch (error) {
-                console.error('[store] markWeekPaid failed', error);
-                showToast({
-                    type: 'error',
-                    title: 'Error',
-                    message: 'No se pudo marcar la semana como pagada.',
-                });
-            }
-        })();
+    const markWeekPaid = useCallback(async (): Promise<boolean> => {
+        if (!isDbReady) return false;
+        try {
+            await markCurrentWeekAsPaid();
+            const [nextPayroll, nextHistory, nextAdvances] = await Promise.all([
+                fetchCurrentPayroll(),
+                fetchWeekHistory(),
+                fetchAdvances(),
+            ]);
+            setPayroll(nextPayroll);
+            setWeekPagada(nextPayroll.pagada);
+            setPayrollAdjustments(payrollToAdjustments(nextPayroll));
+            setWeekHistory(nextHistory);
+            setAdvances(nextAdvances);
+            showToast({
+                type: 'success',
+                title: 'Semana pagada',
+                message: 'La semana actual fue marcada como pagada.',
+            });
+            return true;
+        } catch (error) {
+            console.error('[store] markWeekPaid failed', error);
+            showToast({
+                type: 'error',
+                title: 'Error',
+                message: 'No se pudo marcar la semana como pagada.',
+            });
+            return false;
+        }
+    }, [isDbReady]);
+
+    const unmarkWeekPaid = useCallback(async (): Promise<boolean> => {
+        if (!isDbReady) return false;
+        try {
+            await unmarkCurrentWeekAsPaid();
+            const [nextPayroll, nextHistory, nextAdvances] = await Promise.all([
+                fetchCurrentPayroll(),
+                fetchWeekHistory(),
+                fetchAdvances(),
+            ]);
+            setPayroll(nextPayroll);
+            setWeekPagada(nextPayroll.pagada);
+            setPayrollAdjustments(payrollToAdjustments(nextPayroll));
+            setWeekHistory(nextHistory);
+            setAdvances(nextAdvances);
+            showToast({
+                type: 'success',
+                title: 'Semana reabierta',
+                message: 'La semana actual ya no esta marcada como pagada.',
+            });
+            return true;
+        } catch (error) {
+            console.error('[store] unmarkWeekPaid failed', error);
+            showToast({
+                type: 'error',
+                title: 'Error',
+                message: 'No se pudo quitar el estado de semana pagada.',
+            });
+            return false;
+        }
     }, [isDbReady]);
 
     const getPayroll = useCallback((): WeekPayroll => payroll, [payroll]);
@@ -559,6 +612,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             updateWorker,
             setPayrollAdjustment,
             markWeekPaid,
+            unmarkWeekPaid,
             getAttendance,
             getAttendanceByDate,
             getPayroll,
@@ -581,6 +635,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             updateWorker,
             setPayrollAdjustment,
             markWeekPaid,
+            unmarkWeekPaid,
             getAttendance,
             getAttendanceByDate,
             getPayroll,

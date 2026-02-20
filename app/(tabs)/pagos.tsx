@@ -1,9 +1,10 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppStore } from '../../src/store/AppContext';
+import { fetchPayrollByWeekId } from '../../src/db/repository';
 import { Avatar } from '../../src/components/Avatar';
 import { Chip } from '../../src/components/Chip';
 import { Colors, Spacing, BorderRadius, Shadows } from '../../src/theme';
@@ -11,12 +12,68 @@ import { formatMoney, formatMoneyWithSign } from '../../src/utils';
 
 export default function PagosScreen() {
     const router = useRouter();
-    const { getPayroll, markWeekPaid, weekPagada } = useAppStore();
-    const payroll = getPayroll();
+    const { getPayroll, markWeekPaid, unmarkWeekPaid, weekHistory } = useAppStore();
+    const currentPayroll = getPayroll();
+    const [selectedWeekId, setSelectedWeekId] = useState(currentPayroll.weekId);
+    const [displayPayroll, setDisplayPayroll] = useState(currentPayroll);
+    const [isLoadingWeek, setIsLoadingWeek] = useState(false);
+    const [showSettingsModal, setShowSettingsModal] = useState(false);
+    const [isUpdatingWeekState, setIsUpdatingWeekState] = useState(false);
 
-    const handleMarkPaid = () => {
-        markWeekPaid();
-        router.push('/pagos/semana-pagada');
+    useEffect(() => {
+        setDisplayPayroll(currentPayroll);
+        if (!selectedWeekId) {
+            setSelectedWeekId(currentPayroll.weekId);
+        }
+    }, [currentPayroll, selectedWeekId]);
+
+    useEffect(() => {
+        let mounted = true;
+        if (!selectedWeekId) return;
+        if (selectedWeekId === currentPayroll.weekId) {
+            setDisplayPayroll(currentPayroll);
+            setIsLoadingWeek(false);
+            return;
+        }
+        setIsLoadingWeek(true);
+        void (async () => {
+            try {
+                const weekPayroll = await fetchPayrollByWeekId(selectedWeekId);
+                if (!mounted) return;
+                setDisplayPayroll(weekPayroll);
+            } finally {
+                if (mounted) setIsLoadingWeek(false);
+            }
+        })();
+        return () => {
+            mounted = false;
+        };
+    }, [selectedWeekId, currentPayroll]);
+
+    const selectedWeekIndex = useMemo(
+        () => weekHistory.findIndex((week) => week.weekId === selectedWeekId),
+        [weekHistory, selectedWeekId]
+    );
+    const hasOlderWeek = selectedWeekIndex >= 0 && selectedWeekIndex < weekHistory.length - 1;
+    const hasNewerWeek = selectedWeekIndex > 0;
+    const isCurrentWeekSelected = selectedWeekId === currentPayroll.weekId;
+    const canMarkPaid = isCurrentWeekSelected && !displayPayroll.pagada;
+    const canUnmarkPaid = isCurrentWeekSelected && displayPayroll.pagada;
+
+    const handleMarkPaid = async () => {
+        const ok = await markWeekPaid();
+        if (ok) router.push('/pagos/semana-pagada');
+    };
+
+    const handleUnmarkPaid = async () => {
+        if (!canUnmarkPaid || isUpdatingWeekState) return;
+        setIsUpdatingWeekState(true);
+        try {
+            const ok = await unmarkWeekPaid();
+            if (ok) setShowSettingsModal(false);
+        } finally {
+            setIsUpdatingWeekState(false);
+        }
     };
 
     return (
@@ -24,7 +81,10 @@ export default function PagosScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Pagos</Text>
-                <TouchableOpacity style={styles.headerButton}>
+                <TouchableOpacity
+                    style={styles.headerButton}
+                    onPress={() => setShowSettingsModal(true)}
+                >
                     <MaterialIcons name="settings" size={24} color={Colors.slate600} />
                 </TouchableOpacity>
             </View>
@@ -37,15 +97,39 @@ export default function PagosScreen() {
                 {/* Week Selector */}
                 <View style={styles.weekSelector}>
                     <View style={styles.weekSelectorInner}>
-                        <TouchableOpacity style={styles.weekArrow}>
-                            <MaterialIcons name="chevron-left" size={24} color={Colors.textTertiary} />
+                        <TouchableOpacity
+                            style={styles.weekArrow}
+                            onPress={() => {
+                                if (!hasOlderWeek) return;
+                                setSelectedWeekId(weekHistory[selectedWeekIndex + 1].weekId);
+                            }}
+                            disabled={!hasOlderWeek}
+                        >
+                            <MaterialIcons
+                                name="chevron-left"
+                                size={24}
+                                color={hasOlderWeek ? Colors.primary : Colors.textTertiary}
+                            />
                         </TouchableOpacity>
                         <View style={styles.weekCenter}>
-                            <Text style={styles.weekLabel}>SEMANA ACTUAL</Text>
-                            <Text style={styles.weekDates}>{payroll.dateRange}</Text>
+                            <Text style={styles.weekLabel}>
+                                {displayPayroll.weekLabel.toUpperCase()}
+                            </Text>
+                            <Text style={styles.weekDates}>{displayPayroll.dateRange}</Text>
                         </View>
-                        <TouchableOpacity style={styles.weekArrow}>
-                            <MaterialIcons name="chevron-right" size={24} color={Colors.primary} />
+                        <TouchableOpacity
+                            style={styles.weekArrow}
+                            onPress={() => {
+                                if (!hasNewerWeek) return;
+                                setSelectedWeekId(weekHistory[selectedWeekIndex - 1].weekId);
+                            }}
+                            disabled={!hasNewerWeek}
+                        >
+                            <MaterialIcons
+                                name="chevron-right"
+                                size={24}
+                                color={hasNewerWeek ? Colors.primary : Colors.textTertiary}
+                            />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -54,14 +138,18 @@ export default function PagosScreen() {
                 <View style={styles.banner}>
                     <MaterialIcons name="event" size={20} color={Colors.primary} />
                     <View style={styles.bannerText}>
-                        <Text style={styles.bannerTitle}>Día de pago: Sábado</Text>
-                        <Text style={styles.bannerSubtitle}>Revisa los montos antes de dispersar el efectivo.</Text>
+                        <Text style={styles.bannerTitle}>
+                            {displayPayroll.pagada ? 'Semana cerrada' : 'Semana en curso'}
+                        </Text>
+                        <Text style={styles.bannerSubtitle}>
+                            {isLoadingWeek ? 'Cargando nomina...' : 'Revisa los montos antes de dispersar el efectivo.'}
+                        </Text>
                     </View>
                 </View>
 
                 {/* Worker Payroll Cards */}
                 <View style={styles.workerList}>
-                    {payroll.workers.map((entry) => (
+                    {displayPayroll.workers.map((entry) => (
                         <View key={entry.workerId} style={[styles.payrollCard, Shadows.card]}>
                             <View style={styles.payrollHeader}>
                                 <View style={styles.payrollHeaderLeft}>
@@ -71,9 +159,7 @@ export default function PagosScreen() {
                                         <Text style={styles.payrollRole}>{entry.rol.charAt(0).toUpperCase() + entry.rol.slice(1)}</Text>
                                     </View>
                                 </View>
-                                {entry.workerId === '2' && (
-                                    <Chip label="Completo" variant="success" small />
-                                )}
+                                <Chip label={displayPayroll.pagada ? 'Pagado' : 'Abierto'} variant={displayPayroll.pagada ? 'success' : 'primary'} small />
                             </View>
 
                             <View style={styles.payrollLines}>
@@ -135,24 +221,60 @@ export default function PagosScreen() {
             <View style={styles.bottomBar}>
                 <View style={styles.bottomActions}>
                     <TouchableOpacity
-                        style={[styles.markPaidButton, Shadows.primaryButton, weekPagada && styles.markPaidDone]}
+                        style={[styles.markPaidButton, Shadows.primaryButton, !canMarkPaid && styles.markPaidDone]}
                         onPress={handleMarkPaid}
-                        disabled={weekPagada}
+                        disabled={!canMarkPaid}
                     >
                         <MaterialIcons name="check-circle" size={22} color={Colors.textInverse} />
                         <Text style={styles.markPaidText}>
-                            {weekPagada ? 'Semana pagada ✓' : 'Marcar semana pagada'}
+                            {canMarkPaid
+                                ? 'Marcar semana pagada'
+                                : isCurrentWeekSelected
+                                    ? 'Semana pagada ✓'
+                                    : 'Solo semana actual'}
                         </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.whatsappButton}>
-                        <MaterialIcons name="share" size={24} color={Colors.textInverse} />
                     </TouchableOpacity>
                 </View>
                 <View style={styles.totalRow}>
                     <Text style={styles.totalLabel}>Total Semanal</Text>
-                    <Text style={styles.totalValue}>{formatMoney(payroll.totalSemanal)}</Text>
+                    <Text style={styles.totalValue}>{formatMoney(displayPayroll.totalSemanal)}</Text>
                 </View>
             </View>
+
+            <Modal
+                visible={showSettingsModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowSettingsModal(false)}
+            >
+                <View style={styles.modalBackdrop}>
+                    <View style={styles.modalCard}>
+                        <Text style={styles.modalTitle}>Ajustes de pagos</Text>
+                        <Text style={styles.modalText}>
+                            Puedes reabrir la semana actual para quitarla como pagada.
+                        </Text>
+                        <TouchableOpacity
+                            style={[
+                                styles.modalDangerButton,
+                                (!canUnmarkPaid || isUpdatingWeekState) && styles.modalButtonDisabled,
+                            ]}
+                            onPress={handleUnmarkPaid}
+                            disabled={!canUnmarkPaid || isUpdatingWeekState}
+                        >
+                            <Text style={styles.modalDangerButtonText}>
+                                {isUpdatingWeekState ? 'Actualizando...' : 'Quitar semana pagada'}
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.modalCancelButton}
+                            onPress={() => setShowSettingsModal(false)}
+                            disabled={isUpdatingWeekState}
+                        >
+                            <Text style={styles.modalCancelButtonText}>Cerrar</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -351,13 +473,6 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '700',
     },
-    whatsappButton: {
-        backgroundColor: Colors.whatsapp,
-        padding: 14,
-        borderRadius: BorderRadius.lg,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
     totalRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -374,5 +489,57 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '700',
         color: Colors.text,
+    },
+    modalBackdrop: {
+        flex: 1,
+        backgroundColor: 'rgba(15, 23, 42, 0.45)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: Spacing.xl,
+    },
+    modalCard: {
+        width: '100%',
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.lg,
+        borderWidth: 1,
+        borderColor: Colors.borderLight,
+        padding: Spacing.lg,
+        gap: Spacing.base,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: Colors.text,
+    },
+    modalText: {
+        fontSize: 14,
+        color: Colors.textSecondary,
+        lineHeight: 20,
+    },
+    modalDangerButton: {
+        backgroundColor: Colors.danger,
+        borderRadius: BorderRadius.md,
+        paddingVertical: Spacing.base,
+        alignItems: 'center',
+    },
+    modalDangerButtonText: {
+        color: Colors.textInverse,
+        fontSize: 15,
+        fontWeight: '700',
+    },
+    modalButtonDisabled: {
+        opacity: 0.5,
+    },
+    modalCancelButton: {
+        borderWidth: 1,
+        borderColor: Colors.border,
+        borderRadius: BorderRadius.md,
+        paddingVertical: Spacing.base,
+        alignItems: 'center',
+    },
+    modalCancelButtonText: {
+        color: Colors.textSecondary,
+        fontSize: 15,
+        fontWeight: '600',
     },
 });
