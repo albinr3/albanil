@@ -243,6 +243,15 @@ function emptyPayroll(): WeekPayroll {
     };
 }
 
+function createAdvanceId(): string {
+    const randomPart = Math.random().toString(36).slice(2, 10);
+    return `a${Date.now()}-${randomPart}`;
+}
+
+function shouldIncludePayrollEntry(entry: PayrollWorkerEntry): boolean {
+    return entry.diasTrabajados > 0 || entry.extras > 0 || entry.adelantos > 0;
+}
+
 export async function fetchWorkers(): Promise<Worker[]> {
     const db = await getDb();
     const rows = await db.getAllAsync<WorkerRow>(
@@ -383,7 +392,7 @@ export async function fetchCurrentPayroll(): Promise<WeekPayroll> {
             adelantos,
             totalPagar: totalDias + extras - adelantos,
         };
-    }).filter((entry) => entry.diasTrabajados > 0);
+    }).filter(shouldIncludePayrollEntry);
 
     const totalSemanal = entries.reduce((acc, item) => acc + item.totalPagar, 0);
 
@@ -577,7 +586,7 @@ export async function fetchPayrollByWeekId(weekId: string): Promise<WeekPayroll>
             adelantos,
             totalPagar: totalDias + extras - adelantos,
         };
-    }).filter((entry) => entry.diasTrabajados > 0);
+    }).filter(shouldIncludePayrollEntry);
 
     const totalSemanal = entries.reduce((acc, item) => acc + item.totalPagar, 0);
 
@@ -762,7 +771,7 @@ export async function addAdvanceRecord(input: {
             id, worker_id, worker_apodo, worker_iniciales, avatar_color_index, monto, saldo_pendiente, nota, fecha_iso, estado
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
-        `a${Date.now()}`,
+        createAdvanceId(),
         input.workerId,
         input.workerApodo,
         input.workerIniciales,
@@ -773,6 +782,49 @@ export async function addAdvanceRecord(input: {
         new Date().toISOString(),
         'pendiente'
     );
+}
+
+export async function clearCurrentWeekAdvanceOverride(workerId: string): Promise<void> {
+    if (!workerId) return;
+    const db = await getDb();
+    const weekId = await getCurrentWeekId(db);
+    if (!weekId) return;
+
+    await db.runAsync(
+        `
+        UPDATE payroll_entries
+        SET adelantos_override = 0
+        WHERE week_id = ? AND worker_id = ?
+    `,
+        weekId,
+        workerId
+    );
+}
+
+export async function cancelAdvanceRecord(advanceId: string): Promise<boolean> {
+    if (!advanceId) return false;
+    const db = await getDb();
+    const advance = await db.getFirstAsync<{ estado: Advance['estado'] }>(
+        `
+        SELECT estado
+        FROM advances
+        WHERE id = ?
+        LIMIT 1
+    `,
+        advanceId
+    );
+
+    if (!advance) return false;
+    if (advance.estado === 'descontado') return false;
+
+    await db.runAsync(
+        `
+        DELETE FROM advances
+        WHERE id = ?
+    `,
+        advanceId
+    );
+    return true;
 }
 
 async function getCurrentWeekId(db: Awaited<ReturnType<typeof getDb>>): Promise<string | null> {
@@ -992,6 +1044,7 @@ export async function setCurrentWeekPayrollAdjustment(workerId: string, extras: 
     const extrasManual = Math.max(0, (extras || 0) - attendanceExtras);
     const deudaDisponible = Math.max(0, Number(pendingDebt?.total ?? 0));
     const adelantosAplicar = Math.min(Math.max(0, adelantos || 0), deudaDisponible);
+    const adelantosOverride = Math.abs(adelantosAplicar - deudaDisponible) > 0.01 ? 1 : 0;
 
     await db.runAsync(
         `
@@ -1009,7 +1062,7 @@ export async function setCurrentWeekPayrollAdjustment(workerId: string, extras: 
         tarifa,
         extrasManual,
         adelantosAplicar,
-        1
+        adelantosOverride
     );
 }
 

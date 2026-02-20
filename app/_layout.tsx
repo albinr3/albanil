@@ -42,6 +42,7 @@ export default function RootLayout() {
                         <Stack.Screen name="hoy/dia" options={{ headerShown: false }} />
                         <Stack.Screen name="hoy/editar" options={{ headerShown: false }} />
                         <Stack.Screen name="historial/semanas" options={{ headerShown: false }} />
+                        <Stack.Screen name="backup/historial" options={{ headerShown: false }} />
                         <Stack.Screen name="pagos/semana-pagada" options={{ headerShown: false }} />
                         <Stack.Screen name="pagos/ajustar" options={{ headerShown: false }} />
                     </Stack>

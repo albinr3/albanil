@@ -8,11 +8,14 @@ import type {
     WeekHistoryEntry,
 } from './types';
 import { bootstrapDatabase } from '../db/bootstrap';
+import { runDailySupabaseBackup } from '../backup/dailyBackup';
 import { showToast } from '../ui/toast';
 import {
     activateWorkerForCurrentWeek,
     addAdvanceRecord,
     addWorkerRecord,
+    cancelAdvanceRecord,
+    clearCurrentWeekAdvanceOverride,
     deactivateWorkerRecord,
     fetchAdvances,
     fetchCurrentPayroll,
@@ -45,6 +48,7 @@ interface AppState {
     setExtra: (workerId: string, extra: ExtraPayment | undefined) => void;
     setExtraByDate: (workerId: string, date: string, extra: ExtraPayment | undefined) => void;
     addAdvance: (workerId: string, monto: number, nota: string) => void;
+    cancelAdvance: (advanceId: string) => void;
     addWorker: (input: {
         apodo: string;
         nombreCompleto?: string;
@@ -117,6 +121,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 setPayrollAdjustments(snapshot.payrollAdjustments);
                 setWeekPagada(snapshot.weekPagada);
                 setIsDbReady(true);
+
+                void (async () => {
+                    const result = await runDailySupabaseBackup();
+                    if (__DEV__) {
+                        console.log(
+                            `[backup] daily backup status=${result.status} reason=${result.reason ?? '-'} path=${result.path ?? '-'} localPath=${result.localPath ?? '-'} remotePath=${result.remotePath ?? '-'} debug=${result.debug ?? '-'}`
+                        );
+                    }
+                })();
             } catch (error) {
                 console.error('[store] failed to initialize database', error);
                 if (isActive) {
@@ -276,6 +289,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                         monto,
                         nota,
                     });
+                    await clearCurrentWeekAdvanceOverride(workerId);
                     const [nextAdvances] = await Promise.all([
                         fetchAdvances(),
                         refreshPayrollState(),
@@ -297,6 +311,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             })();
         },
         [isDbReady, workers, refreshPayrollState]
+    );
+
+    const cancelAdvance = useCallback(
+        (advanceId: string) => {
+            if (!isDbReady) return;
+            if (!advanceId) return;
+
+            void (async () => {
+                try {
+                    const canceled = await cancelAdvanceRecord(advanceId);
+                    if (!canceled) {
+                        showToast({
+                            type: 'info',
+                            title: 'No se puede cancelar',
+                            message: 'Este adelanto ya fue descontado y no puede cancelarse.',
+                        });
+                        return;
+                    }
+
+                    const canceledAdvance = advances.find((advance) => advance.id === advanceId);
+                    if (canceledAdvance?.workerId) {
+                        await clearCurrentWeekAdvanceOverride(canceledAdvance.workerId);
+                    }
+
+                    const [nextAdvances] = await Promise.all([
+                        fetchAdvances(),
+                        refreshPayrollState(),
+                    ]);
+                    setAdvances(nextAdvances);
+                    showToast({
+                        type: 'success',
+                        title: 'Adelanto cancelado',
+                        message: 'El adelanto fue removido correctamente.',
+                    });
+                } catch (error) {
+                    console.error('[store] cancelAdvance failed', error);
+                    showToast({
+                        type: 'error',
+                        title: 'Error',
+                        message: 'No se pudo cancelar el adelanto.',
+                    });
+                }
+            })();
+        },
+        [isDbReady, advances, refreshPayrollState]
     );
 
     const addWorker = useCallback(
@@ -606,6 +665,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setExtra,
             setExtraByDate,
             addAdvance,
+            cancelAdvance,
             addWorker,
             addWorkerToWeek,
             deactivateWorker,
@@ -629,6 +689,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setExtra,
             setExtraByDate,
             addAdvance,
+            cancelAdvance,
             addWorker,
             addWorkerToWeek,
             deactivateWorker,

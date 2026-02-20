@@ -13,3 +13,16 @@ Trabajadores: guardar el apodo/nombre de cada trabajador y su tarifa diaria, con
 Historial: ver semanas pagadas y el historial por trabajador para evitar pérdidas o confusiones si se pierde el cuaderno.
 
 En resumen: es un “cuaderno digital” ultra simple, pensado para obra, que le ahorra cuentas, reduce errores y le deja todo registrado.
+
+## Backup automático diario (Supabase)
+
+La app intenta crear 1 backup diario al iniciar.
+
+Configurar en `.env`:
+
+- `EXPO_PUBLIC_SUPABASE_URL`
+- `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- `EXPO_PUBLIC_SUPABASE_BACKUP_BUCKET`
+- `EXPO_PUBLIC_BACKUP_PROJECT_ID`
+
+El backup guarda snapshot JSON de tablas clave (`workers`, `attendance`, `advances`, `payroll_weeks`, `payroll_entries`) para poder auditar o restaurar después.

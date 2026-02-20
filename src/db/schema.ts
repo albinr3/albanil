@@ -85,6 +85,13 @@ export async function createSchema(db: SQLiteDatabase): Promise<void> {
         );
     `);
 
+    await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS app_meta (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+    `);
+
     if (!(await hasColumn(db, 'advances', 'saldo_pendiente'))) {
         await db.execAsync(`
             ALTER TABLE advances

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, StyleSheet, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppStore } from '../../src/store/AppContext';
@@ -8,15 +8,18 @@ import { Avatar } from '../../src/components/Avatar';
 import { Chip } from '../../src/components/Chip';
 import { Colors, Spacing, BorderRadius, Shadows } from '../../src/theme';
 import { formatMoney, formatDateShort } from '../../src/utils';
+import type { Advance } from '../../src/store/types';
 
 export default function AdelantoScreen() {
-    const { workers, advances, addAdvance } = useAppStore();
+    const { workers, advances, addAdvance, cancelAdvance } = useAppStore();
     const activeWorkers = workers.filter((w) => w.activo);
     const [lastWorkedByWorkerId, setLastWorkedByWorkerId] = useState<Record<string, string>>({});
     const [selectedWorker, setSelectedWorker] = useState('');
     const [amount, setAmount] = useState('');
     const [nota, setNota] = useState('');
     const [showPicker, setShowPicker] = useState(false);
+    const [showAdvanceMenu, setShowAdvanceMenu] = useState(false);
+    const [selectedAdvance, setSelectedAdvance] = useState<Advance | null>(null);
 
     useEffect(() => {
         let mounted = true;
@@ -71,14 +74,43 @@ export default function AdelantoScreen() {
     const advanceAmountToShow = (estado: string, monto: number, saldoPendiente: number) =>
         estado === 'descontado' ? monto : saldoPendiente;
 
+    const canCancelSelectedAdvance = !!selectedAdvance && selectedAdvance.estado !== 'descontado';
+
+    const openAdvanceMenu = (advance: Advance) => {
+        setSelectedAdvance(advance);
+        setShowAdvanceMenu(true);
+    };
+
+    const closeAdvanceMenu = () => {
+        setShowAdvanceMenu(false);
+    };
+
+    const handleCancelAdvancePress = () => {
+        if (!selectedAdvance) return;
+        const targetAdvance = selectedAdvance;
+        setShowAdvanceMenu(false);
+        Alert.alert(
+            'Cancelar adelanto',
+            `Se eliminará el adelanto de ${targetAdvance.workerApodo} por ${formatMoney(targetAdvance.saldoPendiente)}. Esta acción no se puede deshacer.`,
+            [
+                { text: 'Volver', style: 'cancel' },
+                {
+                    text: 'Sí, cancelar',
+                    style: 'destructive',
+                    onPress: () => cancelAdvance(targetAdvance.id),
+                },
+            ]
+        );
+    };
+
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Adelantos</Text>
-                <TouchableOpacity style={styles.headerButton}>
+                <Pressable style={styles.headerButton}>
                     <MaterialIcons name="history" size={24} color={Colors.primary} />
-                </TouchableOpacity>
+                </Pressable>
             </View>
 
             <ScrollView
@@ -97,7 +129,7 @@ export default function AdelantoScreen() {
                     </View>
 
                     {/* Worker Selector */}
-                    <TouchableOpacity
+                    <Pressable
                         style={styles.selectorContainer}
                         onPress={() => setShowPicker(!showPicker)}
                     >
@@ -106,12 +138,12 @@ export default function AdelantoScreen() {
                             {selectedWorkerObj ? selectedWorkerObj.apodo : 'Seleccionar trabajador'}
                         </Text>
                         <MaterialIcons name="expand-more" size={22} color={Colors.textTertiary} />
-                    </TouchableOpacity>
+                    </Pressable>
 
                     {showPicker && (
                         <View style={styles.pickerDropdown}>
                             {sortedActiveWorkers.map((w) => (
-                                <TouchableOpacity
+                                <Pressable
                                     key={w.id}
                                     style={[styles.pickerItem, w.id === selectedWorker && styles.pickerItemActive]}
                                     onPress={() => {
@@ -120,7 +152,7 @@ export default function AdelantoScreen() {
                                     }}
                                 >
                                     <Text style={styles.pickerItemText}>{w.apodo}</Text>
-                                </TouchableOpacity>
+                                </Pressable>
                             ))}
                         </View>
                     )}
@@ -155,29 +187,33 @@ export default function AdelantoScreen() {
                     </View>
 
                     {/* Submit Button */}
-                    <TouchableOpacity
+                    <Pressable
                         style={[styles.submitButton, Shadows.primaryButton, (!selectedWorker || !amount) && styles.submitDisabled]}
                         onPress={handleSubmit}
                         disabled={!selectedWorker || !amount}
-                        activeOpacity={0.85}
                     >
                         <MaterialIcons name="add-circle" size={22} color={Colors.textInverse} />
                         <Text style={styles.submitText}>Registrar adelanto</Text>
-                    </TouchableOpacity>
+                    </Pressable>
                 </View>
 
                 {/* Recent Advances */}
                 <View style={styles.recentSection}>
                     <View style={styles.recentHeader}>
                         <Text style={styles.recentTitle}>Recientes</Text>
-                        <TouchableOpacity>
+                        <Pressable>
                             <Text style={styles.recentLink}>Ver todo</Text>
-                        </TouchableOpacity>
+                        </Pressable>
                     </View>
 
                     <View style={styles.advanceList}>
                         {advances.map((adv) => (
-                            <View key={adv.id} style={[styles.advanceItem, Shadows.card, adv.estado === 'descontado' && styles.advanceItemDone]}>
+                            <Pressable
+                                key={adv.id}
+                                style={[styles.advanceItem, Shadows.card, adv.estado === 'descontado' && styles.advanceItemDone]}
+                                onLongPress={() => openAdvanceMenu(adv)}
+                                delayLongPress={600}
+                            >
                                 <View style={styles.advanceItemLeft}>
                                     <Avatar iniciales={adv.workerIniciales} colorIndex={adv.avatarColorIndex} size={40} />
                                     <View>
@@ -191,13 +227,49 @@ export default function AdelantoScreen() {
                                     </Text>
                                     <Chip label={chipLabel(adv.estado)} variant={chipVariant(adv.estado)} small />
                                 </View>
-                            </View>
+                            </Pressable>
                         ))}
                     </View>
                 </View>
 
                 <View style={{ height: 100 }} />
             </ScrollView>
+
+            <Modal
+                visible={showAdvanceMenu}
+                transparent
+                animationType="fade"
+                onRequestClose={closeAdvanceMenu}
+            >
+                <View style={styles.modalBackdrop}>
+                    <View style={styles.modalCard}>
+                        <Text style={styles.modalTitle}>Opciones del adelanto</Text>
+                        <Text style={styles.modalText}>
+                            {selectedAdvance
+                                ? `${selectedAdvance.workerApodo} • ${formatMoney(selectedAdvance.saldoPendiente)}`
+                                : 'Selecciona una opción'}
+                        </Text>
+                        {!canCancelSelectedAdvance && (
+                            <Text style={styles.modalHint}>
+                                Este adelanto ya está descontado y no puede cancelarse.
+                            </Text>
+                        )}
+                        <Pressable
+                            style={[
+                                styles.modalDangerButton,
+                                !canCancelSelectedAdvance && styles.modalButtonDisabled,
+                            ]}
+                            onPress={handleCancelAdvancePress}
+                            disabled={!canCancelSelectedAdvance}
+                        >
+                            <Text style={styles.modalDangerButtonText}>Cancelar adelanto</Text>
+                        </Pressable>
+                        <Pressable style={styles.modalCancelButton} onPress={closeAdvanceMenu}>
+                            <Text style={styles.modalCancelButtonText}>Cerrar</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -430,5 +502,60 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '700',
         color: Colors.text,
+    },
+    modalBackdrop: {
+        flex: 1,
+        backgroundColor: 'rgba(15, 23, 42, 0.45)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: Spacing.xl,
+    },
+    modalCard: {
+        width: '100%',
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.lg,
+        borderWidth: 1,
+        borderColor: Colors.borderLight,
+        padding: Spacing.lg,
+        gap: Spacing.base,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: Colors.text,
+    },
+    modalText: {
+        fontSize: 14,
+        color: Colors.textSecondary,
+    },
+    modalHint: {
+        fontSize: 12,
+        color: Colors.textTertiary,
+    },
+    modalDangerButton: {
+        backgroundColor: Colors.danger,
+        borderRadius: BorderRadius.md,
+        paddingVertical: Spacing.base,
+        alignItems: 'center',
+    },
+    modalDangerButtonText: {
+        color: Colors.textInverse,
+        fontSize: 15,
+        fontWeight: '700',
+    },
+    modalButtonDisabled: {
+        opacity: 0.5,
+    },
+    modalCancelButton: {
+        borderWidth: 1,
+        borderColor: Colors.border,
+        borderRadius: BorderRadius.md,
+        paddingVertical: Spacing.base,
+        alignItems: 'center',
+    },
+    modalCancelButtonText: {
+        color: Colors.textSecondary,
+        fontSize: 15,
+        fontWeight: '600',
     },
 });

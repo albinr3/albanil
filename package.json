@@ -12,10 +12,12 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
+    "@supabase/supabase-js": "^2.97.0",
     "expo": "~55.0.0-preview.11",
     "expo-constants": "~55.0.5",
     "expo-font": "~55.0.4",
     "expo-linking": "~55.0.4",
+    "expo-network": "^8.0.8",
     "expo-router": "~55.0.0-preview.8",
     "expo-splash-screen": "~55.0.6",
     "expo-sqlite": "~55.0.6",

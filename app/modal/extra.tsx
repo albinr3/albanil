@@ -1,6 +1,15 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Pressable } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+    View,
+    Text,
+    ScrollView,
+    TouchableOpacity,
+    TextInput,
+    StyleSheet,
+    Pressable,
+    Keyboard,
+    Platform,
+} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppStore } from '../../src/store/AppContext';
@@ -16,39 +25,90 @@ const PRESETS = [
 export default function ExtraModal() {
     const router = useRouter();
     const params = useLocalSearchParams<{ workerId: string; workerName: string; date?: string }>();
-    const { setExtra, setExtraByDate } = useAppStore();
-    const [selectedPreset, setSelectedPreset] = useState<number | null>(2); // Default "Medio día"
-    const [customAmount, setCustomAmount] = useState('500');
-    const [nota, setNota] = useState('');
-    const [showCustom, setShowCustom] = useState(false);
+    const { setExtra, setExtraByDate, getAttendance, getAttendanceByDate } = useAppStore();
+    const amountInputRef = useRef<TextInput>(null);
+    const scrollRef = useRef<ScrollView>(null);
+
+    const currentExtra = useMemo(() => {
+        if (!params.workerId) return undefined;
+        const attendance = params.date
+            ? getAttendanceByDate(params.workerId, params.date)
+            : getAttendance(params.workerId);
+        return attendance.extra;
+    }, [getAttendance, getAttendanceByDate, params.date, params.workerId]);
+
+    const initialPresetIndex = useMemo(() => {
+        if (!currentExtra) return 2;
+        return PRESETS.findIndex((preset) => preset.monto === currentExtra.monto);
+    }, [currentExtra]);
+
+    const [selectedPreset, setSelectedPreset] = useState<number | null>(
+        initialPresetIndex >= 0 ? initialPresetIndex : null
+    );
+    const [customAmount, setCustomAmount] = useState(currentExtra ? String(currentExtra.monto) : '500');
+    const [nota, setNota] = useState(currentExtra?.nota ?? '');
+    const [keyboardOffset, setKeyboardOffset] = useState(0);
+
+    useEffect(() => {
+        const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+        const onShow = Keyboard.addListener(showEvent, (event) => {
+            setKeyboardOffset(event.endCoordinates.height);
+            requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+        });
+        const onHide = Keyboard.addListener(hideEvent, () => setKeyboardOffset(0));
+
+        return () => {
+            onShow.remove();
+            onHide.remove();
+        };
+    }, []);
 
     const handlePresetSelect = (index: number) => {
         setSelectedPreset(index);
         setCustomAmount(PRESETS[index].monto.toString());
-        setShowCustom(false);
     };
 
     const handleSave = () => {
-        const monto = parseInt(customAmount) || 0;
-        if (monto > 0 && params.workerId) {
-            const preset = selectedPreset !== null ? PRESETS[selectedPreset] : null;
-            const extra = {
-                monto,
-                nota: nota || preset?.label || 'Extra',
-            };
-            if (params.date) {
-                setExtraByDate(params.workerId, params.date, extra);
-            } else {
-                setExtra(params.workerId, extra);
-            }
+        if (!params.workerId) {
+            router.back();
+            return;
         }
+
+        const parsedAmount = Number.parseInt(customAmount, 10);
+        const monto = Number.isFinite(parsedAmount) ? parsedAmount : 0;
+
+        if (monto <= 0) {
+            if (params.date) {
+                setExtraByDate(params.workerId, params.date, undefined);
+            } else {
+                setExtra(params.workerId, undefined);
+            }
+            router.back();
+            return;
+        }
+
+        const preset = selectedPreset !== null ? PRESETS[selectedPreset] : null;
+        const extra = {
+            monto,
+            nota: nota || preset?.label || 'Extra',
+        };
+
+        if (params.date) {
+            setExtraByDate(params.workerId, params.date, extra);
+        } else {
+            setExtra(params.workerId, extra);
+        }
+
         router.back();
     };
 
     return (
         <View style={styles.overlay}>
             <Pressable style={styles.backdrop} onPress={() => router.back()} />
-            <View style={styles.sheet}>
+            <View style={[styles.sheetWrap, { paddingBottom: keyboardOffset }]}>
+                <View style={styles.sheet}>
                 {/* Handle */}
                 <View style={styles.handleContainer}>
                     <View style={styles.handle} />
@@ -63,8 +123,13 @@ export default function ExtraModal() {
                 </View>
 
                 <ScrollView
+                    ref={scrollRef}
                     style={styles.scroll}
-                    contentContainerStyle={styles.scrollContent}
+                    contentContainerStyle={[
+                        styles.scrollContent,
+                        keyboardOffset > 0 && styles.scrollContentKeyboard,
+                    ]}
+                    keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
                     {/* Quick Amount Grid */}
@@ -109,8 +174,11 @@ export default function ExtraModal() {
                         <TouchableOpacity
                             style={styles.otherButton}
                             onPress={() => {
-                                setShowCustom(!showCustom);
                                 setSelectedPreset(null);
+                                requestAnimationFrame(() => {
+                                    amountInputRef.current?.focus();
+                                    scrollRef.current?.scrollToEnd({ animated: true });
+                                });
                             }}
                         >
                             <MaterialIcons name="edit" size={16} color={Colors.primary} />
@@ -124,12 +192,14 @@ export default function ExtraModal() {
                         <View style={styles.amountInputContainer}>
                             <Text style={styles.amountPrefix}>RD$</Text>
                             <TextInput
+                                ref={amountInputRef}
                                 style={styles.amountInput}
                                 value={customAmount}
                                 onChangeText={(t) => {
                                     setCustomAmount(t);
                                     setSelectedPreset(null);
                                 }}
+                                onFocus={() => scrollRef.current?.scrollToEnd({ animated: true })}
                                 keyboardType="numeric"
                                 placeholder="0.00"
                                 placeholderTextColor={Colors.slate300}
@@ -167,6 +237,7 @@ export default function ExtraModal() {
                         <Text style={styles.saveButtonText}>Guardar Extra</Text>
                     </TouchableOpacity>
                 </View>
+                </View>
             </View>
         </View>
     );
@@ -174,6 +245,10 @@ export default function ExtraModal() {
 
 const styles = StyleSheet.create({
     overlay: {
+        flex: 1,
+        justifyContent: 'flex-end',
+    },
+    sheetWrap: {
         flex: 1,
         justifyContent: 'flex-end',
     },
@@ -220,10 +295,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    scroll: { maxHeight: 400 },
+    scroll: {
+        maxHeight: 400,
+    },
     scrollContent: {
         padding: Spacing.xl,
         gap: 24,
+    },
+    scrollContentKeyboard: {
+        paddingBottom: Spacing['4xl'],
     },
     section: {},
     sectionLabel: {

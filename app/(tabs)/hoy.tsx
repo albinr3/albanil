@@ -30,7 +30,10 @@ export default function HoyScreen() {
                         <Text style={styles.dayTitle}>{getTodayLabel()}</Text>
                         <Text style={styles.monthSubtitle}>{getMonthYearLabel()}</Text>
                     </View>
-                    <TouchableOpacity style={styles.settingsButton}>
+                    <TouchableOpacity
+                        style={styles.settingsButton}
+                        onPress={() => router.push('/backup/historial')}
+                    >
                         <MaterialIcons name="settings" size={24} color={Colors.slate600} />
                     </TouchableOpacity>
                 </View>
