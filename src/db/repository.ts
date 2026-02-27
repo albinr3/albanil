@@ -10,7 +10,7 @@ import type {
 } from '../store/types';
 
 function todayKey(): string {
-    return new Date().toISOString().split('T')[0];
+    return toLocalIsoDate(new Date());
 }
 
 function boolFromInt(value: number): boolean {
@@ -40,8 +40,10 @@ function getCurrentWeekRangeIso(): { weekStart: string; weekEnd: string } {
 
 function formatWeekLabelFromIsoRange(weekStartIso: string, weekEndIso: string): { weekLabel: string; dateRange: string } {
     const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const start = new Date(`${weekStartIso}T00:00:00`);
-    const end = new Date(`${weekEndIso}T00:00:00`);
+    const [sy, sm, sd] = weekStartIso.split('-').map(Number);
+    const [ey, em, ed] = weekEndIso.split('-').map(Number);
+    const start = new Date(sy, sm - 1, sd);
+    const end = new Date(ey, em - 1, ed);
     const startDay = start.getDate();
     const endDay = end.getDate();
     const endMonth = months[end.getMonth()];
@@ -70,6 +72,7 @@ interface AttendanceRow {
     worked: number;
     extra_monto: number | null;
     extra_nota: string | null;
+    extra_tipo: ExtraPayment['tipo'] | null;
 }
 
 interface AdvanceRow {
@@ -218,6 +221,7 @@ function toAttendanceMap(rows: AttendanceRow[]): Record<string, AttendanceRecord
                 ? {
                     monto: Number(row.extra_monto),
                     nota: row.extra_nota ?? '',
+                    tipo: row.extra_tipo === 'medio_dia' ? 'medio_dia' : 'general',
                 }
                 : undefined;
 
@@ -249,7 +253,7 @@ function createAdvanceId(): string {
 }
 
 function shouldIncludePayrollEntry(entry: PayrollWorkerEntry): boolean {
-    return entry.diasTrabajados > 0 || entry.extras > 0 || entry.adelantos > 0;
+    return entry.diasTrabajados > 0;
 }
 
 export async function fetchWorkers(): Promise<Worker[]> {
@@ -272,7 +276,7 @@ export async function fetchAttendanceByDate(date: string): Promise<Record<string
     const db = await getDb();
     const rows = await db.getAllAsync<AttendanceRow>(
         `
-        SELECT worker_id, date, worked, extra_monto, extra_nota
+        SELECT worker_id, date, worked, extra_monto, extra_nota, extra_tipo
         FROM attendance
         WHERE date = ?
     `,
@@ -332,7 +336,13 @@ export async function fetchCurrentPayroll(): Promise<WeekPayroll> {
         LEFT JOIN (
             SELECT
                 worker_id,
-                SUM(CASE WHEN worked = 1 THEN 1 ELSE 0 END) AS dias_trabajados,
+                SUM(
+                    CASE
+                        WHEN worked = 1 THEN 1
+                        WHEN worked = 0 AND extra_tipo = 'medio_dia' THEN 0.5
+                        ELSE 0
+                    END
+                ) AS dias_trabajados,
                 SUM(CASE WHEN worked = 1 THEN COALESCE(extra_monto, 0) ELSE 0 END) AS extras
             FROM attendance
             WHERE date >= ? AND date <= ?
@@ -364,7 +374,7 @@ export async function fetchCurrentPayroll(): Promise<WeekPayroll> {
         const semanaPagada = boolFromInt(current.pagada);
         const diasBase = Number(row.dias_base);
         const diasAsistencia = Number(row.dias_asistencia);
-        const dias = semanaPagada ? diasBase : (diasAsistencia > 0 ? diasAsistencia : diasBase);
+        const dias = semanaPagada ? diasBase : diasAsistencia;
         const tarifa = Number(row.tarifa);
         const extrasBase = Number(row.extras_base);
         const extrasAsistencia = Number(row.extras_asistencia);
@@ -720,10 +730,25 @@ export async function toggleAttendanceForDate(workerId: string, date: string): P
 
     await db.runAsync(
         `
-        INSERT INTO attendance (worker_id, date, worked, extra_monto, extra_nota)
-        VALUES (?, ?, ?, NULL, NULL)
+        INSERT INTO attendance (worker_id, date, worked, extra_monto, extra_nota, extra_tipo)
+        VALUES (?, ?, ?, NULL, NULL, 'general')
         ON CONFLICT(worker_id, date) DO UPDATE SET
-            worked = excluded.worked
+            worked = excluded.worked,
+            extra_monto = CASE
+                WHEN excluded.worked = 0 THEN NULL
+                WHEN attendance.worked = 0 AND attendance.extra_tipo = 'medio_dia' THEN NULL
+                ELSE extra_monto
+            END,
+            extra_nota = CASE
+                WHEN excluded.worked = 0 THEN NULL
+                WHEN attendance.worked = 0 AND attendance.extra_tipo = 'medio_dia' THEN NULL
+                ELSE extra_nota
+            END,
+            extra_tipo = CASE
+                WHEN excluded.worked = 0 THEN 'general'
+                WHEN attendance.worked = 0 AND attendance.extra_tipo = 'medio_dia' THEN 'general'
+                ELSE extra_tipo
+            END
     `,
         workerId,
         date,
@@ -737,22 +762,38 @@ export async function setExtraForToday(workerId: string, extra: ExtraPayment | u
 
 export async function setExtraForDate(workerId: string, date: string, extra: ExtraPayment | undefined): Promise<void> {
     const db = await getDb();
+    const current = await db.getFirstAsync<{ worked: number }>(
+        `
+        SELECT worked
+        FROM attendance
+        WHERE worker_id = ? AND date = ?
+    `,
+        workerId,
+        date
+    );
+
+    if (!current && !extra) return;
+
+    const worked = current?.worked ?? 0;
     const monto = extra?.monto ?? null;
     const nota = extra?.nota ?? null;
+    const tipo: ExtraPayment['tipo'] = extra?.tipo === 'medio_dia' ? 'medio_dia' : 'general';
 
     await db.runAsync(
         `
-        INSERT INTO attendance (worker_id, date, worked, extra_monto, extra_nota)
-        VALUES (?, ?, 1, ?, ?)
+        INSERT INTO attendance (worker_id, date, worked, extra_monto, extra_nota, extra_tipo)
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(worker_id, date) DO UPDATE SET
-            worked = 1,
             extra_monto = excluded.extra_monto,
-            extra_nota = excluded.extra_nota
+            extra_nota = excluded.extra_nota,
+            extra_tipo = excluded.extra_tipo
     `,
         workerId,
         date,
+        worked,
         monto,
-        nota
+        nota,
+        tipo
     );
 }
 
@@ -871,7 +912,7 @@ export async function addWorkerRecord(worker: Worker): Promise<void> {
                 `${weekId}-${worker.id}`,
                 weekId,
                 worker.id,
-                5,
+                0,
                 worker.tarifa,
                 0,
                 0
@@ -917,7 +958,7 @@ export async function activateWorkerForCurrentWeek(workerId: string): Promise<vo
             `${weekId}-${workerId}`,
             weekId,
             workerId,
-            5,
+            0,
             Number(worker.tarifa),
             0,
             0
@@ -1038,7 +1079,7 @@ export async function setCurrentWeekPayrollAdjustment(workerId: string, extras: 
         workerId
     );
 
-    const dias = existing?.dias_trabajados ?? 5;
+    const dias = existing?.dias_trabajados ?? 0;
     const tarifa = existing?.tarifa ?? worker?.tarifa ?? 0;
     const attendanceExtras = Math.max(0, Number(attendanceSummary?.extras ?? 0));
     const extrasManual = Math.max(0, (extras || 0) - attendanceExtras);
@@ -1126,6 +1167,14 @@ export async function markCurrentWeekAsPaid(): Promise<void> {
     if (!weekId) return;
 
     await db.withTransactionAsync(async () => {
+        await db.runAsync(
+            `
+            DELETE FROM payroll_entries
+            WHERE week_id = ?
+        `,
+            weekId
+        );
+
         for (const entry of payroll.workers) {
             await db.runAsync(
                 `

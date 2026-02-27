@@ -60,20 +60,30 @@ export default function HoyScreen() {
 
                 {/* Worker Cards */}
                 <View style={styles.workerList}>
-                    {activeWorkers.map((worker) => (
-                        <WorkerCard
-                            key={worker.id}
-                            worker={worker}
-                            attendance={getAttendance(worker.id)}
-                            onToggle={() => toggleAttendance(worker.id)}
-                            onExtraPress={() =>
-                                router.push({
-                                    pathname: '/modal/extra',
-                                    params: { workerId: worker.id, workerName: worker.apodo },
-                                })
-                            }
-                        />
-                    ))}
+                    {activeWorkers.map((worker) => {
+                        const attendance = getAttendance(worker.id);
+                        return (
+                            <WorkerCard
+                                key={worker.id}
+                                worker={worker}
+                                attendance={attendance}
+                                onToggle={() => toggleAttendance(worker.id)}
+                                onExtraPress={() =>
+                                    router.push({
+                                        pathname: '/modal/extra',
+                                        params: {
+                                            workerId: worker.id,
+                                            workerName: worker.apodo,
+                                            worked: attendance.worked ? '1' : '0',
+                                            extraMonto: attendance.extra ? String(attendance.extra.monto) : '',
+                                            extraNota: attendance.extra?.nota ?? '',
+                                            extraTipo: attendance.extra?.tipo ?? 'general',
+                                        },
+                                    })
+                                }
+                            />
+                        );
+                    })}
                 </View>
 
                 <View style={{ height: 100 }} />

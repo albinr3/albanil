@@ -1,14 +1,18 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import {
     fetchBackupHistory,
+    fetchLocalBackupHistory,
     getLocalBackupStatus,
+    restoreLocalBackup,
+    restoreRemoteBackup,
     runDailySupabaseBackup,
     type BackupHistoryItem,
 } from '../../src/backup/dailyBackup';
+import { useAppStore } from '../../src/store/AppContext';
 import { showToast } from '../../src/ui/toast';
 import { BorderRadius, Colors, Shadows, Spacing } from '../../src/theme';
 
@@ -57,22 +61,34 @@ function backupReasonMessage(reason?: string): string {
 
 export default function BackupHistoryScreen() {
     const router = useRouter();
+    const { reloadSnapshot } = useAppStore();
     const [isLoading, setIsLoading] = useState(true);
     const [isRunningBackup, setIsRunningBackup] = useState(false);
-    const [history, setHistory] = useState<BackupHistoryItem[]>([]);
+    const [isRestoringBackup, setIsRestoringBackup] = useState(false);
+    const [remoteHistory, setRemoteHistory] = useState<BackupHistoryItem[]>([]);
+    const [localHistory, setLocalHistory] = useState<BackupHistoryItem[]>([]);
+    const [selectedBackupKey, setSelectedBackupKey] = useState<string | null>(null);
     const [lastSuccessAt, setLastSuccessAt] = useState<string | null>(null);
     const [lastSuccessPath, setLastSuccessPath] = useState<string | null>(null);
     const [lastRemoteSuccessAt, setLastRemoteSuccessAt] = useState<string | null>(null);
     const [lastRemoteSuccessPath, setLastRemoteSuccessPath] = useState<string | null>(null);
 
+    const backupKey = (item: Pick<BackupHistoryItem, 'source' | 'path'>) => `${item.source}:${item.path}`;
+
     const loadData = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [items, localStatus] = await Promise.all([
+            const [remoteItems, localItems, localStatus] = await Promise.all([
                 fetchBackupHistory(40),
+                fetchLocalBackupHistory(40),
                 getLocalBackupStatus(),
             ]);
-            setHistory(items);
+            setRemoteHistory(remoteItems);
+            setLocalHistory(localItems);
+            const nextKeys = new Set([...remoteItems, ...localItems].map((item) => backupKey(item)));
+            setSelectedBackupKey((current) =>
+                current && nextKeys.has(current) ? current : null
+            );
             setLastSuccessAt(localStatus.lastSuccessAt);
             setLastSuccessPath(localStatus.lastSuccessPath);
             setLastRemoteSuccessAt(localStatus.lastRemoteSuccessAt);
@@ -94,11 +110,19 @@ export default function BackupHistoryScreen() {
         try {
             const result = await runDailySupabaseBackup({ force: true, requireWifi: true });
             if (result.status === 'success') {
-                showToast({
-                    type: 'success',
-                    title: 'Backup completado',
-                    message: 'La copia de seguridad fue subida correctamente.',
-                });
+                if (result.remotePath) {
+                    showToast({
+                        type: 'success',
+                        title: 'Backup completado',
+                        message: 'La copia de seguridad fue subida correctamente a Supabase.',
+                    });
+                } else {
+                    showToast({
+                        type: 'info',
+                        title: 'Backup local completado',
+                        message: backupReasonMessage(result.reason),
+                    });
+                }
             } else if (result.status === 'skipped') {
                 showToast({
                     type: 'info',
@@ -122,6 +146,72 @@ export default function BackupHistoryScreen() {
         } finally {
             setIsRunningBackup(false);
         }
+    };
+
+    const runRestore = async (item: BackupHistoryItem) => {
+        if (isRestoringBackup) return;
+        setIsRestoringBackup(true);
+        try {
+            const result =
+                item.source === 'local'
+                    ? await restoreLocalBackup(item.path)
+                    : await restoreRemoteBackup(item.path);
+            if (result.status === 'success') {
+                const reloaded = await reloadSnapshot();
+                await loadData();
+                showToast({
+                    type: reloaded ? 'success' : 'info',
+                    title: reloaded ? 'Backup restaurado' : 'Backup restaurado',
+                    message: reloaded
+                        ? `Se restauró ${item.fileName} correctamente.`
+                        : 'Se restauró el backup, pero no se pudo recargar la UI automáticamente.',
+                });
+            } else {
+                showToast({
+                    type: 'error',
+                    title: 'Error al restaurar',
+                    message: result.reason || 'No se pudo restaurar el backup seleccionado.',
+                });
+            }
+        } catch {
+            showToast({
+                type: 'error',
+                title: 'Error',
+                message: 'No se pudo restaurar el backup seleccionado.',
+            });
+        } finally {
+            setIsRestoringBackup(false);
+        }
+    };
+
+    const handleRestoreSelected = () => {
+        if (isRestoringBackup) return;
+        const item = [...localHistory, ...remoteHistory].find(
+            (entry) => backupKey(entry) === selectedBackupKey
+        );
+        if (!item) {
+            showToast({
+                type: 'info',
+                title: 'Selecciona un backup',
+                message: 'Elige un backup local o remoto para restaurarlo.',
+            });
+            return;
+        }
+
+        Alert.alert(
+            'Restaurar backup',
+            `Se reemplazarán los datos actuales con el backup ${item.fileName} (${item.dateKey}) [${item.source === 'local' ? 'local' : 'Supabase'}].`,
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Restaurar',
+                    style: 'destructive',
+                    onPress: () => {
+                        void runRestore(item);
+                    },
+                },
+            ]
+        );
     };
 
     return (
@@ -166,33 +256,108 @@ export default function BackupHistoryScreen() {
                     </Text>
                 </Pressable>
 
+                <Pressable
+                    style={[
+                        styles.restoreButton,
+                        selectedBackupKey && !isRestoringBackup ? Shadows.card : null,
+                        (!selectedBackupKey || isRestoringBackup) && styles.restoreButtonDisabled,
+                    ]}
+                    onPress={handleRestoreSelected}
+                    disabled={!selectedBackupKey || isRestoringBackup}
+                >
+                    <MaterialIcons name="restore" size={20} color={selectedBackupKey && !isRestoringBackup ? Colors.primary : Colors.slate400} />
+                    <Text
+                        style={[
+                            styles.restoreButtonText,
+                            (!selectedBackupKey || isRestoringBackup) && styles.restoreButtonTextDisabled,
+                        ]}
+                    >
+                        {isRestoringBackup ? 'Restaurando backup...' : 'Restaurar backup seleccionado'}
+                    </Text>
+                </Pressable>
+
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>Historial remoto</Text>
-                    <Text style={styles.sectionCount}>{history.length}</Text>
+                    <Text style={styles.sectionCount}>{remoteHistory.length}</Text>
                 </View>
 
                 <View style={styles.list}>
-                    {!isLoading && history.length === 0 && (
+                    {!isLoading && remoteHistory.length === 0 && (
                         <View style={[styles.emptyCard, Shadows.card]}>
-                            <Text style={styles.emptyTitle}>Sin backups todavía</Text>
+                            <Text style={styles.emptyTitle}>Sin backups remotos</Text>
                             <Text style={styles.emptyText}>
                                 Conéctate a Wi-Fi y usa "Realizar backup ahora".
                             </Text>
                         </View>
                     )}
 
-                    {history.map((item) => (
-                        <View key={item.path} style={[styles.itemCard, Shadows.card]}>
+                    {remoteHistory.map((item) => {
+                        const isSelected = backupKey(item) === selectedBackupKey;
+                        return (
+                        <Pressable
+                            key={`${item.source}:${item.path}`}
+                            style={[styles.itemCard, Shadows.card, isSelected && styles.itemCardSelected]}
+                            onPress={() => setSelectedBackupKey(backupKey(item))}
+                        >
                             <View style={styles.itemTop}>
-                                <Text style={styles.itemDate}>{item.dateKey}</Text>
+                                <View style={styles.itemTopLeft}>
+                                    <Text style={styles.itemDate}>{item.dateKey}</Text>
+                                    {isSelected && (
+                                        <View style={styles.selectedChip}>
+                                            <Text style={styles.selectedChipText}>Seleccionado</Text>
+                                        </View>
+                                    )}
+                                </View>
                                 <Text style={styles.itemSize}>{formatBytes(item.sizeBytes)}</Text>
                             </View>
                             <Text style={styles.itemFile} numberOfLines={1}>
                                 {item.fileName}
                             </Text>
                             <Text style={styles.itemMeta}>{formatDateTime(item.createdAt)}</Text>
+                        </Pressable>
+                    )})}
+                </View>
+
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Historial local</Text>
+                    <Text style={styles.sectionCount}>{localHistory.length}</Text>
+                </View>
+
+                <View style={styles.list}>
+                    {!isLoading && localHistory.length === 0 && (
+                        <View style={[styles.emptyCard, Shadows.card]}>
+                            <Text style={styles.emptyTitle}>Sin backups locales</Text>
+                            <Text style={styles.emptyText}>
+                                Usa "Realizar backup ahora" para crear una copia local.
+                            </Text>
                         </View>
-                    ))}
+                    )}
+
+                    {localHistory.map((item) => {
+                        const isSelected = backupKey(item) === selectedBackupKey;
+                        return (
+                        <Pressable
+                            key={`${item.source}:${item.path}`}
+                            style={[styles.itemCard, Shadows.card, isSelected && styles.itemCardSelected]}
+                            onPress={() => setSelectedBackupKey(backupKey(item))}
+                        >
+                            <View style={styles.itemTop}>
+                                <View style={styles.itemTopLeft}>
+                                    <Text style={styles.itemDate}>{item.dateKey}</Text>
+                                    {isSelected && (
+                                        <View style={styles.selectedChip}>
+                                            <Text style={styles.selectedChipText}>Seleccionado</Text>
+                                        </View>
+                                    )}
+                                </View>
+                                <Text style={styles.itemSize}>{formatBytes(item.sizeBytes)}</Text>
+                            </View>
+                            <Text style={styles.itemFile} numberOfLines={1}>
+                                {item.fileName}
+                            </Text>
+                            <Text style={styles.itemMeta}>{formatDateTime(item.createdAt)}</Text>
+                        </Pressable>
+                    )})}
                 </View>
             </ScrollView>
         </SafeAreaView>
@@ -273,6 +438,28 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
     },
+    restoreButton: {
+        minHeight: 48,
+        borderRadius: BorderRadius.lg,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        backgroundColor: Colors.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'row',
+        gap: 8,
+    },
+    restoreButtonDisabled: {
+        opacity: 0.7,
+    },
+    restoreButtonText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: Colors.primary,
+    },
+    restoreButtonTextDisabled: {
+        color: Colors.slate400,
+    },
     sectionHeader: {
         marginTop: 4,
         flexDirection: 'row',
@@ -322,6 +509,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        gap: 8,
+    },
+    itemTopLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        flex: 1,
+        minWidth: 0,
     },
     itemDate: {
         fontSize: 13,
@@ -339,5 +534,20 @@ const styles = StyleSheet.create({
     itemMeta: {
         fontSize: 12,
         color: Colors.textTertiary,
+    },
+    itemCardSelected: {
+        borderColor: Colors.primary,
+        backgroundColor: Colors.primaryLighter,
+    },
+    selectedChip: {
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: BorderRadius.full,
+        backgroundColor: Colors.primary,
+    },
+    selectedChipText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: Colors.textInverse,
     },
 });

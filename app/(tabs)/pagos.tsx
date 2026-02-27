@@ -1,18 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppStore } from '../../src/store/AppContext';
 import { fetchPayrollByWeekId } from '../../src/db/repository';
 import { Avatar } from '../../src/components/Avatar';
 import { Chip } from '../../src/components/Chip';
 import { Colors, Spacing, BorderRadius, Shadows } from '../../src/theme';
-import { formatMoney, formatMoneyWithSign } from '../../src/utils';
+import { formatMoney, formatMoneyWithSign, formatWorkDays } from '../../src/utils';
 
 export default function PagosScreen() {
     const router = useRouter();
-    const { getPayroll, markWeekPaid, unmarkWeekPaid, weekHistory } = useAppStore();
+    const { getPayroll, markWeekPaid, unmarkWeekPaid, weekHistory, reloadSnapshot } = useAppStore();
     const currentPayroll = getPayroll();
     const [selectedWeekId, setSelectedWeekId] = useState(currentPayroll.weekId);
     const [displayPayroll, setDisplayPayroll] = useState(currentPayroll);
@@ -49,6 +49,12 @@ export default function PagosScreen() {
             mounted = false;
         };
     }, [selectedWeekId, currentPayroll]);
+
+    useFocusEffect(
+        React.useCallback(() => {
+            void reloadSnapshot();
+        }, [reloadSnapshot])
+    );
 
     const selectedWeekIndex = useMemo(
         () => weekHistory.findIndex((week) => week.weekId === selectedWeekId),
@@ -165,7 +171,7 @@ export default function PagosScreen() {
                             <View style={styles.payrollLines}>
                                 <View style={styles.payrollLine}>
                                     <Text style={styles.payrollLineLabel}>
-                                        Días ({entry.diasTrabajados} x {formatMoney(entry.tarifa)})
+                                        Días ({formatWorkDays(entry.diasTrabajados)} x {formatMoney(entry.tarifa)})
                                     </Text>
                                     <Text style={styles.payrollLineValue}>{formatMoney(entry.totalDias)}</Text>
                                 </View>

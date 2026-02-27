@@ -70,6 +70,7 @@ interface AppState {
     getAttendance: (workerId: string) => AttendanceRecord;
     getAttendanceByDate: (workerId: string, date: string) => AttendanceRecord;
     getPayroll: () => WeekPayroll;
+    reloadSnapshot: () => Promise<boolean>;
 }
 
 const EMPTY_PAYROLL: WeekPayroll = {
@@ -84,7 +85,11 @@ const EMPTY_PAYROLL: WeekPayroll = {
 const AppContext = createContext<AppState | null>(null);
 
 function todayKey(): string {
-    return new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -102,6 +107,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setPayroll(nextPayroll);
         setPayrollAdjustments(payrollToAdjustments(nextPayroll));
         setWeekPagada(nextPayroll.pagada);
+    }, []);
+
+    const reloadSnapshot = useCallback(async (): Promise<boolean> => {
+        try {
+            const snapshot = await loadAppSnapshot();
+            setWorkers(snapshot.workers);
+            setAttendance(snapshot.attendance);
+            setAdvances(snapshot.advances);
+            setWeekHistory(snapshot.weekHistory);
+            setPayroll(snapshot.payroll);
+            setPayrollAdjustments(snapshot.payrollAdjustments);
+            setWeekPagada(snapshot.weekPagada);
+            return true;
+        } catch (error) {
+            console.error('[store] reloadSnapshot failed', error);
+            return false;
+        }
     }, []);
 
     useEffect(() => {
@@ -676,6 +698,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             getAttendance,
             getAttendanceByDate,
             getPayroll,
+            reloadSnapshot,
         }),
         [
             workers,
@@ -700,6 +723,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             getAttendance,
             getAttendanceByDate,
             getPayroll,
+            reloadSnapshot,
         ]
     );
 

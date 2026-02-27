@@ -27,7 +27,7 @@ export default function NuevoTrabajadorScreen() {
     const [apodo, setApodo] = useState('');
     const [nombreCompleto, setNombreCompleto] = useState('');
     const [tarifaRaw, setTarifaRaw] = useState('');
-    const [tipo, setTipo] = useState<TipoTrabajador>('fijo');
+    const [tipo, setTipo] = useState<TipoTrabajador>('por_dias');
 
     const tarifa = useMemo(() => Number(tarifaRaw.replace(',', '.')), [tarifaRaw]);
     const canSave = apodo.trim().length > 0 && Number.isFinite(tarifa) && tarifa > 0;

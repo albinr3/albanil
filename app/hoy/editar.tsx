@@ -12,7 +12,8 @@ import { SCREEN_SAFE_AREA_EDGES, useStickyFooterLayout } from '../../src/ui/safe
 import { showToast } from '../../src/ui/toast';
 
 function toReadableDate(iso: string): string {
-    const d = new Date(`${iso}T00:00:00`);
+    const [year, month, day] = iso.split('-').map(Number);
+    const d = new Date(year, month - 1, day);
     return d.toLocaleDateString('es-DO', {
         weekday: 'long',
         day: 'numeric',
@@ -37,7 +38,7 @@ export default function HoyEditarScreen() {
     const router = useRouter();
     const { scrollContentPaddingBottom, footerPaddingBottom } = useStickyFooterLayout(120, Spacing.base);
     const { date } = useLocalSearchParams<{ date: string }>();
-    const { workers } = useAppStore();
+    const { workers, reloadSnapshot } = useAppStore();
     const [attendanceByDate, setAttendanceByDate] = useState<Record<string, AttendanceRecord>>({});
 
     const loadAttendance = async () => {
@@ -66,6 +67,7 @@ export default function HoyEditarScreen() {
         try {
             await toggleAttendanceForDate(workerId, date);
             await loadAttendance();
+            await reloadSnapshot();
             showToast({
                 type: 'success',
                 title: 'Asistencia actualizada',
@@ -102,21 +104,32 @@ export default function HoyEditarScreen() {
                 </View>
 
                 <View style={styles.list}>
-                    {dayWorkers.map((worker) => (
-                        <WorkerCard
-                            key={worker.id}
-                            worker={worker}
-                            attendance={attendanceByDate[`${worker.id}-${date}`] || { workerId: worker.id, date: date || '', worked: false }}
-                            onToggle={() => void handleToggle(worker.id)}
-                            onExtraPress={() =>
-                                date &&
-                                router.push({
-                                    pathname: '/modal/extra',
-                                    params: { workerId: worker.id, workerName: worker.apodo, date },
-                                })
-                            }
-                        />
-                    ))}
+                    {dayWorkers.map((worker) => {
+                        const attendance = attendanceByDate[`${worker.id}-${date}`] || { workerId: worker.id, date: date || '', worked: false };
+                        return (
+                            <WorkerCard
+                                key={worker.id}
+                                worker={worker}
+                                attendance={attendance}
+                                onToggle={() => void handleToggle(worker.id)}
+                                onExtraPress={() =>
+                                    date &&
+                                    router.push({
+                                        pathname: '/modal/extra',
+                                        params: {
+                                            workerId: worker.id,
+                                            workerName: worker.apodo,
+                                            date,
+                                            worked: attendance.worked ? '1' : '0',
+                                            extraMonto: attendance.extra ? String(attendance.extra.monto) : '',
+                                            extraNota: attendance.extra?.nota ?? '',
+                                            extraTipo: attendance.extra?.tipo ?? 'general',
+                                        },
+                                    })
+                                }
+                            />
+                        );
+                    })}
                 </View>
             </ScrollView>
 

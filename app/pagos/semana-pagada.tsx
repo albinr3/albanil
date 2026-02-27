@@ -6,7 +6,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useAppStore } from '../../src/store/AppContext';
 import { Avatar } from '../../src/components/Avatar';
 import { Colors, Spacing, BorderRadius, Shadows } from '../../src/theme';
-import { formatMoney } from '../../src/utils';
+import { formatMoney, formatWorkDays } from '../../src/utils';
 
 export default function SemanaPagadaScreen() {
     const router = useRouter();
@@ -86,7 +86,7 @@ export default function SemanaPagadaScreen() {
                             <View style={styles.breakdownLines}>
                                 <View style={styles.breakdownLine}>
                                     <Text style={styles.lineLabel}>
-                                        {entry.diasTrabajados} días × {formatMoney(entry.tarifa)}
+                                        {formatWorkDays(entry.diasTrabajados)} días × {formatMoney(entry.tarifa)}
                                     </Text>
                                     <Text style={styles.lineValue}>{formatMoney(entry.totalDias)}</Text>
                                 </View>

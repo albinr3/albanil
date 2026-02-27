@@ -16,11 +16,14 @@ export function WorkerCard({ worker, attendance, onToggle, onExtraPress }: Worke
     const isWorked = attendance.worked;
     const extra = attendance.extra;
     const hasExtra = !!extra;
+    const isHalfDay = !isWorked && extra?.tipo === 'medio_dia';
+    const stripeColor = isWorked ? Colors.primary : isHalfDay ? Colors.warning : Colors.slate300;
+    const noButtonColor = isHalfDay ? Colors.warning : Colors.danger;
 
     return (
-        <View style={[styles.card, Shadows.card, !isWorked && styles.cardInactive]}>
+        <View style={[styles.card, Shadows.card, !isWorked && !isHalfDay && styles.cardInactive]}>
             {/* Status stripe */}
-            <View style={[styles.stripe, { backgroundColor: isWorked ? Colors.primary : Colors.slate300 }]} />
+            <View style={[styles.stripe, { backgroundColor: stripeColor }]} />
 
             <View style={styles.content}>
                 {/* Top row */}
@@ -44,12 +47,18 @@ export function WorkerCard({ worker, attendance, onToggle, onExtraPress }: Worke
                             style={[
                                 styles.toggleButton,
                                 !isWorked && styles.toggleButtonActive,
-                                !isWorked && { backgroundColor: Colors.danger },
+                                !isWorked && { backgroundColor: noButtonColor },
                             ]}
                             onPress={onToggle}
                             activeOpacity={0.7}
                         >
-                            {!isWorked && <MaterialIcons name="close" size={14} color={Colors.textInverse} />}
+                            {!isWorked && (
+                                <MaterialIcons
+                                    name={isHalfDay ? 'timelapse' : 'close'}
+                                    size={14}
+                                    color={Colors.textInverse}
+                                />
+                            )}
                             <Text
                                 style={[
                                     styles.toggleText,
@@ -83,7 +92,13 @@ export function WorkerCard({ worker, attendance, onToggle, onExtraPress }: Worke
 
                 {/* Bottom row */}
                 <View style={styles.bottomRow}>
-                    {hasExtra ? (
+                    {isHalfDay && extra ? (
+                        <View style={[styles.extraBadge, styles.halfDayBadge]}>
+                            <Text style={[styles.extraBadgeText, styles.halfDayBadgeText]}>
+                                Medio día • {formatMoney(extra.monto)}
+                            </Text>
+                        </View>
+                    ) : hasExtra && extra ? (
                         <View style={styles.extraBadge}>
                             <Text style={styles.extraBadgeText}>
                                 + {formatMoney(extra.monto)} {extra.nota}
@@ -237,6 +252,12 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '700',
         color: Colors.primary,
+    },
+    halfDayBadge: {
+        backgroundColor: Colors.warningLight,
+    },
+    halfDayBadgeText: {
+        color: Colors.warningDark,
     },
     extraButton: {
         flexDirection: 'row',

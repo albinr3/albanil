@@ -1,6 +1,7 @@
 export type TipoTrabajador = 'fijo' | 'por_dias';
 export type RolTrabajador = 'albañil' | 'ayudante' | 'carpintero' | 'pintor' | 'varillero' | 'maestro';
 export type EstadoAdelanto = 'pendiente' | 'parcial' | 'descontado';
+export type TipoExtra = 'general' | 'medio_dia';
 
 export interface Worker {
     id: string;
@@ -17,6 +18,7 @@ export interface Worker {
 export interface ExtraPayment {
     monto: number;
     nota: string;
+    tipo: TipoExtra;
 }
 
 export interface AttendanceRecord {

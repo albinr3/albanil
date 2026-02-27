@@ -20,3 +20,13 @@ export function formatMoneyWithSign(amount: number, sign: '+' | '-'): string {
     const formatted = rounded.toLocaleString('en-US');
     return `${sign} RD$ ${formatted}`;
 }
+
+/**
+ * Format worked days preserving half-day values.
+ * formatWorkDays(1)   -> "1"
+ * formatWorkDays(1.5) -> "1.5"
+ */
+export function formatWorkDays(days: number): string {
+    const roundedToHalf = Math.round(days * 2) / 2;
+    return Number.isInteger(roundedToHalf) ? String(roundedToHalf) : roundedToHalf.toFixed(1);
+}

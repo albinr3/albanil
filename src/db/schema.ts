@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 interface TableInfoRow {
     name: string;
@@ -34,6 +34,7 @@ export async function createSchema(db: SQLiteDatabase): Promise<void> {
             worked INTEGER NOT NULL CHECK (worked IN (0,1)),
             extra_monto REAL,
             extra_nota TEXT,
+            extra_tipo TEXT NOT NULL DEFAULT 'general' CHECK (extra_tipo IN ('general','medio_dia')),
             PRIMARY KEY (worker_id, date),
             FOREIGN KEY (worker_id) REFERENCES workers(id) ON DELETE CASCADE
         );
@@ -104,6 +105,18 @@ export async function createSchema(db: SQLiteDatabase): Promise<void> {
             ADD COLUMN adelantos_override INTEGER NOT NULL DEFAULT 0 CHECK (adelantos_override IN (0,1));
         `);
     }
+    if (!(await hasColumn(db, 'attendance', 'extra_tipo'))) {
+        await db.execAsync(`
+            ALTER TABLE attendance
+            ADD COLUMN extra_tipo TEXT NOT NULL DEFAULT 'general';
+        `);
+    }
+
+    await db.execAsync(`
+        UPDATE attendance
+        SET extra_tipo = 'general'
+        WHERE extra_tipo IS NULL OR extra_tipo NOT IN ('general','medio_dia');
+    `);
 
     await db.execAsync(`
         UPDATE advances

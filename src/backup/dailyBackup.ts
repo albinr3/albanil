@@ -30,11 +30,19 @@ export interface BackupLocalStatus {
 }
 
 export interface BackupHistoryItem {
+    source: 'remote' | 'local';
     path: string;
     dateKey: string;
     fileName: string;
     sizeBytes: number;
     createdAt: string | null;
+}
+
+export interface RestoreBackupResult {
+    status: BackupStatus;
+    reason?: string;
+    restoredPath?: string;
+    debug?: string;
 }
 
 interface BackupConfig {
@@ -58,6 +66,24 @@ interface BackupSnapshot {
     };
 }
 
+type SnapshotTableName = keyof BackupSnapshot['tables'];
+
+const SNAPSHOT_DELETE_ORDER: SnapshotTableName[] = [
+    'payroll_entries',
+    'attendance',
+    'advances',
+    'payroll_weeks',
+    'workers',
+];
+
+const SNAPSHOT_INSERT_ORDER: SnapshotTableName[] = [
+    'workers',
+    'attendance',
+    'advances',
+    'payroll_weeks',
+    'payroll_entries',
+];
+
 const META_INSTALLATION_ID = 'backup.installation_id';
 const META_LOCAL_LAST_SUCCESS_DATE = 'backup.local.last_success_date';
 const META_LOCAL_LAST_SUCCESS_PATH = 'backup.local.last_success_path';
@@ -69,6 +95,10 @@ const META_REMOTE_LAST_SUCCESS_AT = 'backup.remote.last_success_at';
 function getLocalBackupRoot(): string | null {
     if (!FileSystem.documentDirectory) return null;
     return `${FileSystem.documentDirectory}backups`;
+}
+
+function getLocalProjectId(): string {
+    return resolveConfig()?.projectId ?? 'default';
 }
 
 function getLocalDateKey(date = new Date()): string {
@@ -128,6 +158,45 @@ function toErrorDetail(error: unknown): string {
     }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function toSqliteValue(value: unknown): string | number | null {
+    if (value === null || value === undefined) return null;
+    if (typeof value === 'string' || typeof value === 'number') return value;
+    if (typeof value === 'boolean') return value ? 1 : 0;
+    return JSON.stringify(value);
+}
+
+function parseBackupSnapshot(payload: string): BackupSnapshot {
+    const parsed = JSON.parse(payload) as unknown;
+    if (!isRecord(parsed)) {
+        throw new Error('invalid_backup_payload');
+    }
+
+    const tables = parsed.tables;
+    if (!isRecord(tables)) {
+        throw new Error('invalid_backup_tables');
+    }
+
+    const requiredTables: SnapshotTableName[] = [
+        'workers',
+        'attendance',
+        'advances',
+        'payroll_weeks',
+        'payroll_entries',
+    ];
+
+    for (const tableName of requiredTables) {
+        if (!Array.isArray(tables[tableName])) {
+            throw new Error(`invalid_backup_table_${tableName}`);
+        }
+    }
+
+    return parsed as unknown as BackupSnapshot;
+}
+
 async function getMetaValue(key: string): Promise<string | null> {
     const db = await getDb();
     const row = await db.getFirstAsync<{ value: string }>(
@@ -166,6 +235,56 @@ async function getOrCreateInstallationId(): Promise<string> {
 async function readTableRows(tableName: string): Promise<Record<string, unknown>[]> {
     const db = await getDb();
     return db.getAllAsync<Record<string, unknown>>(`SELECT * FROM ${tableName}`);
+}
+
+async function getTableColumnNames(
+    db: Awaited<ReturnType<typeof getDb>>,
+    tableName: SnapshotTableName
+): Promise<Set<string>> {
+    const rows = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${tableName});`);
+    return new Set(rows.map((row) => row.name));
+}
+
+async function insertSnapshotRows(
+    db: Awaited<ReturnType<typeof getDb>>,
+    tableName: SnapshotTableName,
+    rows: Record<string, unknown>[],
+    allowedColumns: Set<string>
+): Promise<void> {
+    if (!rows.length) return;
+
+    for (const row of rows) {
+        const entries = Object.entries(row).filter(([key]) => allowedColumns.has(key));
+        if (!entries.length) continue;
+
+        const columns = entries.map(([key]) => key);
+        const placeholders = columns.map(() => '?').join(', ');
+        const sql = `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders})`;
+        const values = entries.map(([, value]) => toSqliteValue(value));
+        await db.runAsync(sql, ...values);
+    }
+}
+
+async function applyBackupSnapshot(snapshot: BackupSnapshot): Promise<void> {
+    const db = await getDb();
+    const columnMapEntries = await Promise.all(
+        (Object.keys(snapshot.tables) as SnapshotTableName[]).map(async (tableName) => [
+            tableName,
+            await getTableColumnNames(db, tableName),
+        ] as const)
+    );
+    const columnMap = new Map<SnapshotTableName, Set<string>>(columnMapEntries);
+
+    await db.withTransactionAsync(async () => {
+        for (const tableName of SNAPSHOT_DELETE_ORDER) {
+            await db.runAsync(`DELETE FROM ${tableName}`);
+        }
+
+        for (const tableName of SNAPSHOT_INSERT_ORDER) {
+            const rows = snapshot.tables[tableName];
+            await insertSnapshotRows(db, tableName, rows, columnMap.get(tableName) ?? new Set());
+        }
+    });
 }
 
 async function buildSnapshot(projectId: string, installationId: string): Promise<BackupSnapshot> {
@@ -368,11 +487,32 @@ function toBackupHistoryItem(
     file: { name: string; metadata?: { size?: number }; created_at?: string | null }
 ): BackupHistoryItem {
     return {
+        source: 'remote',
         path: `${projectId}/${installationId}/${dateKey}/${file.name}`,
         dateKey,
         fileName: file.name,
         sizeBytes: Number(file.metadata?.size ?? 0),
         createdAt: file.created_at ?? null,
+    };
+}
+
+function toLocalBackupHistoryItem(params: {
+    fileUri: string;
+    dateKey: string;
+    fileName: string;
+    sizeBytes: number;
+    modificationTime?: number | null;
+}): BackupHistoryItem {
+    return {
+        source: 'local',
+        path: params.fileUri,
+        dateKey: params.dateKey,
+        fileName: params.fileName,
+        sizeBytes: params.sizeBytes,
+        createdAt:
+            typeof params.modificationTime === 'number'
+                ? new Date(params.modificationTime * 1000).toISOString()
+                : null,
     };
 }
 
@@ -417,4 +557,172 @@ export async function fetchBackupHistory(limit = 30): Promise<BackupHistoryItem[
     }
 
     return history;
+}
+
+export async function fetchLocalBackupHistory(limit = 30): Promise<BackupHistoryItem[]> {
+    const root = getLocalBackupRoot();
+    if (!root) return [];
+
+    const installationId = await getMetaValue(META_INSTALLATION_ID);
+    if (!installationId) return [];
+
+    const projectId = getLocalProjectId();
+    const basePath = `${root}/${projectId}/${installationId}`;
+    const baseInfo = await FileSystem.getInfoAsync(basePath);
+    if (!baseInfo.exists) return [];
+
+    const dateFolders = (await FileSystem.readDirectoryAsync(basePath)).sort((a, b) => b.localeCompare(a));
+    const history: BackupHistoryItem[] = [];
+
+    for (const dateKey of dateFolders) {
+        const folderPath = `${basePath}/${dateKey}`;
+        const folderInfo = await FileSystem.getInfoAsync(folderPath);
+        if (!folderInfo.exists) continue;
+
+        const files = (await FileSystem.readDirectoryAsync(folderPath))
+            .filter((name) => name.endsWith('.json'))
+            .sort((a, b) => b.localeCompare(a));
+
+        for (const fileName of files) {
+            const fileUri = `${folderPath}/${fileName}`;
+            const info = await FileSystem.getInfoAsync(fileUri);
+            if (!info.exists) continue;
+
+            history.push(
+                toLocalBackupHistoryItem({
+                    fileUri,
+                    dateKey,
+                    fileName,
+                    sizeBytes: Number(('size' in info ? info.size : 0) ?? 0),
+                    modificationTime:
+                        'modificationTime' in info && typeof info.modificationTime === 'number'
+                            ? info.modificationTime
+                            : null,
+                })
+            );
+
+            if (history.length >= limit) return history;
+        }
+    }
+
+    return history;
+}
+
+export async function restoreRemoteBackup(path: string): Promise<RestoreBackupResult> {
+    const normalizedPath = path.trim();
+    if (!normalizedPath) {
+        return { status: 'error', reason: 'missing_backup_path' };
+    }
+
+    const config = resolveConfig();
+    if (!config) {
+        return {
+            status: 'error',
+            reason: 'missing_backup_config',
+            debug: 'missing EXPO_PUBLIC_SUPABASE_URL/EXPO_PUBLIC_SUPABASE_ANON_KEY/EXPO_PUBLIC_SUPABASE_BACKUP_BUCKET',
+        };
+    }
+
+    const supabase = getSupabaseClient(config);
+
+    let payload = '';
+    try {
+        const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+            .from(config.bucket)
+            .createSignedUrl(normalizedPath, 60);
+
+        if (signedUrlError || !signedUrlData?.signedUrl) {
+            return {
+                status: 'error',
+                reason: signedUrlError?.message || 'failed_to_sign_backup_url',
+            };
+        }
+
+        const response = await fetch(signedUrlData.signedUrl);
+        if (!response.ok) {
+            return {
+                status: 'error',
+                reason: `download_failed_${response.status}`,
+            };
+        }
+        payload = await response.text();
+    } catch (error) {
+        return {
+            status: 'error',
+            reason: 'network_or_transport_error',
+            debug: toErrorDetail(error),
+        };
+    }
+
+    let snapshot: BackupSnapshot;
+    try {
+        snapshot = parseBackupSnapshot(payload);
+    } catch (error) {
+        return {
+            status: 'error',
+            reason: 'invalid_backup_file',
+            debug: toErrorDetail(error),
+        };
+    }
+
+    try {
+        await applyBackupSnapshot(snapshot);
+    } catch (error) {
+        return {
+            status: 'error',
+            reason: 'restore_failed',
+            debug: toErrorDetail(error),
+        };
+    }
+
+    return {
+        status: 'success',
+        restoredPath: normalizedPath,
+    };
+}
+
+export async function restoreLocalBackup(path: string): Promise<RestoreBackupResult> {
+    const normalizedPath = path.trim();
+    if (!normalizedPath) {
+        return { status: 'error', reason: 'missing_backup_path' };
+    }
+
+    let payload = '';
+    try {
+        payload = await FileSystem.readAsStringAsync(normalizedPath, {
+            encoding: FileSystem.EncodingType.UTF8,
+        });
+    } catch (error) {
+        return {
+            status: 'error',
+            reason: 'local_backup_read_failed',
+            debug: toErrorDetail(error),
+        };
+    }
+
+    let snapshot: BackupSnapshot;
+    try {
+        snapshot = parseBackupSnapshot(payload);
+    } catch (error) {
+        return {
+            status: 'error',
+            reason: 'invalid_backup_file',
+            debug: toErrorDetail(error),
+        };
+    }
+
+    try {
+        await applyBackupSnapshot(snapshot);
+    } catch (error) {
+        return {
+            status: 'error',
+            reason: 'restore_failed',
+            debug: toErrorDetail(error),
+        };
+    }
+
+    return {
+        status: 'success',
+        restoredPath: normalizedPath,
+    };
 }

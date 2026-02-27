@@ -8,12 +8,14 @@ import { Chip } from '../../src/components/Chip';
 import { fetchWorkerPayrollHistory } from '../../src/db/repository';
 import type { EstadoAdelanto } from '../../src/store/types';
 import { Colors, Spacing, BorderRadius, Shadows } from '../../src/theme';
-import { formatDateShort, formatMoney } from '../../src/utils';
+import { SCREEN_SAFE_AREA_EDGES, useStickyFooterLayout } from '../../src/ui/safeArea';
+import { formatDateShort, formatMoney, formatWorkDays } from '../../src/utils';
 
 type TabType = 'historial' | 'adelantos';
 
 export default function TrabajadorDetailScreen() {
     const router = useRouter();
+    const { scrollContentPaddingBottom, footerPaddingBottom } = useStickyFooterLayout(132, Spacing.base);
     const { id } = useLocalSearchParams<{ id: string }>();
     const { workers, advances, deactivateWorker, addWorkerToWeek } = useAppStore();
     const worker = workers.find((w) => w.id === id);
@@ -75,7 +77,7 @@ export default function TrabajadorDetailScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={styles.container} edges={SCREEN_SAFE_AREA_EDGES}>
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -87,7 +89,11 @@ export default function TrabajadorDetailScreen() {
                 </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                style={styles.scroll}
+                contentContainerStyle={{ paddingBottom: scrollContentPaddingBottom }}
+                showsVerticalScrollIndicator={false}
+            >
                 {/* Profile Header */}
                 <View style={styles.profileHeader}>
                     <View style={styles.profileRow}>
@@ -174,7 +180,7 @@ export default function TrabajadorDetailScreen() {
                                             <View style={styles.historyMain}>
                                                 <Text style={styles.historyWeek} numberOfLines={1} ellipsizeMode="tail">{item.weekLabel}</Text>
                                                 <Text style={styles.historyDays} numberOfLines={1} ellipsizeMode="tail">
-                                                    {item.dateRange} • {item.diasTrabajados} días x {formatMoney(item.tarifa)}
+                                                    {item.dateRange} • {formatWorkDays(item.diasTrabajados)} días x {formatMoney(item.tarifa)}
                                                 </Text>
                                             </View>
                                         </View>
@@ -233,11 +239,10 @@ export default function TrabajadorDetailScreen() {
                     )}
                 </View>
 
-                <View style={{ height: 120 }} />
             </ScrollView>
 
             {/* Fixed Footer */}
-            <View style={styles.footer}>
+            <View style={[styles.footer, { paddingBottom: footerPaddingBottom }]}>
                 <TouchableOpacity
                     style={[styles.deactivateButton, !worker.activo && styles.activateButton]}
                     onPress={() => {
@@ -554,7 +559,6 @@ const styles = StyleSheet.create({
         gap: 16,
         paddingHorizontal: Spacing.base,
         paddingVertical: Spacing.base,
-        paddingBottom: Spacing['2xl'],
         backgroundColor: Colors.surface,
         borderTopWidth: 1,
         borderTopColor: Colors.border,

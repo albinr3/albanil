@@ -7,7 +7,7 @@ import { useAppStore } from '../../src/store/AppContext';
 import { Avatar } from '../../src/components/Avatar';
 import { BorderRadius, Colors, Shadows, Spacing } from '../../src/theme';
 import { SCREEN_SAFE_AREA_EDGES, useStickyFooterLayout } from '../../src/ui/safeArea';
-import { formatMoney } from '../../src/utils';
+import { formatMoney, formatWorkDays } from '../../src/utils';
 
 function toCurrencyInput(raw: string): string {
     return raw.replace(/[^\d]/g, '');
@@ -82,7 +82,7 @@ export default function AjustarPagosScreen() {
                             <View>
                                 <Text style={styles.workerName}>{selectedWorker.apodo}</Text>
                                 <Text style={styles.workerMeta}>
-                                    {selectedWorker.diasTrabajados} dias x {formatMoney(selectedWorker.tarifa)}
+                                    {formatWorkDays(selectedWorker.diasTrabajados)} dias x {formatMoney(selectedWorker.tarifa)}
                                 </Text>
                             </View>
                         </View>

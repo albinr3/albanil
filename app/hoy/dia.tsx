@@ -11,7 +11,8 @@ import { SCREEN_SAFE_AREA_EDGES, useStickyFooterLayout } from '../../src/ui/safe
 import { formatMoney } from '../../src/utils';
 
 function toReadableDate(iso: string): string {
-    const d = new Date(`${iso}T00:00:00`);
+    const [year, month, day] = iso.split('-').map(Number);
+    const d = new Date(year, month - 1, day);
     return d.toLocaleDateString('es-DO', {
         weekday: 'long',
         day: 'numeric',
@@ -30,6 +31,12 @@ function buildWorkersForDate(workers: Worker[], attendance: Record<string, Atten
     const withAttendance = new Set(getWorkerIdsFromAttendance(attendance, date));
     const filtered = workers.filter((w) => w.activo || withAttendance.has(w.id));
     return filtered.sort((a, b) => a.apodo.localeCompare(b.apodo, 'es'));
+}
+
+function getAttendanceRank(attendance: AttendanceRecord): number {
+    if (attendance.worked) return 2;
+    if (attendance.extra?.tipo === 'medio_dia') return 1;
+    return 0;
 }
 
 export default function DiaDetalleScreen() {
@@ -73,8 +80,10 @@ export default function DiaDetalleScreen() {
             return { worker, attendance };
         })
         .sort((a, b) => {
-            if (a.attendance.worked !== b.attendance.worked) {
-                return a.attendance.worked ? -1 : 1;
+            const rankA = getAttendanceRank(a.attendance);
+            const rankB = getAttendanceRank(b.attendance);
+            if (rankA !== rankB) {
+                return rankB - rankA;
             }
             return a.worker.apodo.localeCompare(b.worker.apodo, 'es');
         });
@@ -97,36 +106,47 @@ export default function DiaDetalleScreen() {
                 <Text style={styles.readOnlyBadge}>Solo lectura</Text>
 
                 <View style={styles.list}>
-                    {rows.map(({ worker, attendance }) => (
-                        <View key={worker.id} style={[styles.card, Shadows.card]}>
-                            <View style={styles.cardTop}>
-                                <View>
-                                    <Text style={styles.workerName}>{worker.apodo}</Text>
-                                    <Text style={styles.workerRate}>{formatMoney(worker.tarifa)} / día</Text>
-                                </View>
-                                <View
-                                    style={[
-                                        styles.statusPill,
-                                        attendance.worked ? styles.statusYes : styles.statusNo,
-                                    ]}
-                                >
-                                    <Text
+                    {rows.map(({ worker, attendance }) => {
+                        const isHalfDay = !attendance.worked && attendance.extra?.tipo === 'medio_dia';
+                        return (
+                            <View key={worker.id} style={[styles.card, Shadows.card]}>
+                                <View style={styles.cardTop}>
+                                    <View>
+                                        <Text style={styles.workerName}>{worker.apodo}</Text>
+                                        <Text style={styles.workerRate}>{formatMoney(worker.tarifa)} / día</Text>
+                                    </View>
+                                    <View
                                         style={[
-                                            styles.statusText,
-                                            attendance.worked ? styles.statusTextYes : styles.statusTextNo,
+                                            styles.statusPill,
+                                            attendance.worked
+                                                ? styles.statusYes
+                                                : isHalfDay
+                                                    ? styles.statusHalf
+                                                    : styles.statusNo,
                                         ]}
                                     >
-                                        {attendance.worked ? 'SI trabajó' : 'NO trabajó'}
-                                    </Text>
+                                        <Text
+                                            style={[
+                                                styles.statusText,
+                                                attendance.worked
+                                                    ? styles.statusTextYes
+                                                    : isHalfDay
+                                                        ? styles.statusTextHalf
+                                                        : styles.statusTextNo,
+                                            ]}
+                                        >
+                                            {attendance.worked ? 'SI trabajó' : isHalfDay ? 'MEDIO día' : 'NO trabajó'}
+                                        </Text>
+                                    </View>
                                 </View>
+                                {!!attendance.extra && (
+                                    <Text style={[styles.extraText, isHalfDay && styles.extraTextHalf]}>
+                                        {isHalfDay ? 'Medio día:' : 'Extra:'} {formatMoney(attendance.extra.monto)} {attendance.extra.nota}
+                                    </Text>
+                                )}
                             </View>
-                            {!!attendance.extra && (
-                                <Text style={styles.extraText}>
-                                    Extra: {formatMoney(attendance.extra.monto)} {attendance.extra.nota}
-                                </Text>
-                            )}
-                        </View>
-                    ))}
+                        );
+                    })}
                 </View>
             </ScrollView>
 
@@ -222,14 +242,22 @@ const styles = StyleSheet.create({
         backgroundColor: '#fee2e2',
         borderColor: '#fca5a5',
     },
+    statusHalf: {
+        backgroundColor: Colors.warningLight,
+        borderColor: '#fdba74',
+    },
     statusText: { fontSize: 12, fontWeight: '800' },
     statusTextYes: { color: '#166534' },
     statusTextNo: { color: '#991b1b' },
+    statusTextHalf: { color: Colors.warningDark },
     extraText: {
         marginTop: 8,
         color: Colors.primary,
         fontWeight: '700',
         fontSize: 13,
+    },
+    extraTextHalf: {
+        color: Colors.warningDark,
     },
     footer: {
         position: 'absolute',

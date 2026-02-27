@@ -2,7 +2,7 @@ Es una app móvil para tu papá, que es albañil / maestro constructor en Repúb
 
 La app le sirve para controlar su cuadrilla y los pagos semanales sin complicarse:
 
-HOY (Asistencia): marcar cada día quién trabajó y quién no, y anotar extras (por horas de más o ayudas).
+HOY (Asistencia): marcar cada día quién trabajó y quién no, y anotar extras (por horas de más o ayudas). También soporta medio día.
 
 Adelantos: registrar los préstamos/adelantos que da durante la semana (muy frecuente).
 
@@ -13,6 +13,18 @@ Trabajadores: guardar el apodo/nombre de cada trabajador y su tarifa diaria, con
 Historial: ver semanas pagadas y el historial por trabajador para evitar pérdidas o confusiones si se pierde el cuaderno.
 
 En resumen: es un “cuaderno digital” ultra simple, pensado para obra, que le ahorra cuentas, reduce errores y le deja todo registrado.
+
+## Regla de Medio Día
+
+La app maneja `Medio día` como una regla especial para evitar doble conteo:
+
+- Si el trabajador está en `NO`, solo se puede usar el preset `Medio día` (los demás extras quedan inhabilitados).
+- El monto de `Medio día` se calcula automáticamente como la mitad de la tarifa diaria del trabajador (redondeado al peso).
+- En nómina, `Medio día` suma `0.5` días trabajados.
+- Si un registro estaba en `Medio día` y se cambia a `SÍ`, se elimina ese extra para que cuente solo `1` día.
+- Si se cambia de `SÍ` a `NO`, se limpian los extras de ese día.
+
+Ejemplo: lunes `SÍ` (1 día) + martes `Medio día` (0.5) = `1.5 días` en Pagos.
 
 ## Backup automático diario (Supabase)
 

@@ -87,8 +87,6 @@ export default function HoyCalendarioScreen() {
                                 style={[
                                     styles.dayCell,
                                     !item.inMonth && styles.dayCellOut,
-                                    item.disabled && styles.dayCellDisabled,
-                                    isToday && styles.dayCellToday,
                                 ]}
                                 onPress={() =>
                                     router.push({
@@ -99,16 +97,24 @@ export default function HoyCalendarioScreen() {
                                 disabled={item.disabled}
                                 activeOpacity={0.8}
                             >
-                                <Text
+                                <View
                                     style={[
-                                        styles.dayText,
-                                        !item.inMonth && styles.dayTextOut,
-                                        item.disabled && styles.dayTextDisabled,
-                                        isToday && styles.dayTextToday,
+                                        styles.dayCellInner,
+                                        item.disabled && styles.dayCellInnerDisabled,
+                                        isToday && styles.dayCellInnerToday,
                                     ]}
                                 >
-                                    {item.date.getDate()}
-                                </Text>
+                                    <Text
+                                        style={[
+                                            styles.dayText,
+                                            !item.inMonth && styles.dayTextOut,
+                                            item.disabled && styles.dayTextDisabled,
+                                            isToday && styles.dayTextToday,
+                                        ]}
+                                    >
+                                        {item.date.getDate()}
+                                    </Text>
+                                </View>
                             </TouchableOpacity>
                         );
                     })}
@@ -186,11 +192,14 @@ const styles = StyleSheet.create({
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 8,
     },
     dayCell: {
-        width: '12.9%',
+        width: '14.285714%',
         aspectRatio: 1,
+        padding: 4,
+    },
+    dayCellInner: {
+        flex: 1,
         borderRadius: BorderRadius.md,
         backgroundColor: Colors.surface,
         borderWidth: 1,
@@ -201,10 +210,10 @@ const styles = StyleSheet.create({
     dayCellOut: {
         opacity: 0.45,
     },
-    dayCellDisabled: {
+    dayCellInnerDisabled: {
         backgroundColor: Colors.slate50,
     },
-    dayCellToday: {
+    dayCellInnerToday: {
         borderColor: Colors.primary,
         backgroundColor: Colors.primaryLight,
     },
