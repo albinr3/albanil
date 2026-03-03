@@ -2,17 +2,23 @@ Es una app móvil para tu papá, que es albañil / maestro constructor en Repúb
 
 La app le sirve para controlar su cuadrilla y los pagos semanales sin complicarse:
 
-HOY (Asistencia): marcar cada día quién trabajó y quién no, y anotar extras (por horas de más o ayudas). También soporta medio día.
+HOY (Asistencia): marcar cada día quién trabajó y quién no, y anotar extras (por horas de más o ayudas). También soporta medio día y muestra un resumen al final con el total de trabajadores que sí trabajaron y los que hicieron medio día.
 
 Adelantos: registrar los préstamos/adelantos que da durante la semana (muy frecuente).
 
-Pagos (Sábado): calcular automáticamente cuánto le toca a cada trabajador en la semana (días × tarifa + extras − adelantos), y permitir “cerrar” la semana cuando ya pagó.
+Sábados (Pagos): calcular automáticamente cuánto le toca a cada trabajador en la semana (días × tarifa + extras − adelantos), y permitir “cerrar” la semana cuando ya pagó.
 
 Trabajadores: guardar el apodo/nombre de cada trabajador y su tarifa diaria, con activos/inactivos porque la gente cambia mucho.
 
 Historial: ver semanas pagadas y el historial por trabajador para evitar pérdidas o confusiones si se pierde el cuaderno.
 
 En resumen: es un “cuaderno digital” ultra simple, pensado para obra, que le ahorra cuentas, reduce errores y le deja todo registrado.
+
+## Pantalla completa en Android
+
+- En Android, la app entra en modo inmersivo: se oculta la barra de navegación del sistema (los 3 botones o la barra de gestos) usando `expo-navigation-bar`.
+- El usuario siempre puede sacar de nuevo la barra del sistema con un gesto desde el borde inferior.
+- El menú inferior de pestañas (`HOY / ADELANTO / SÁBADOS / EQUIPO`) está ajustado para que su contenido no quede pegado al borde inferior, incluso en este modo de pantalla completa.
 
 ## Regla de Medio Día
 

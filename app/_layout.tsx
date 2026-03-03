@@ -1,11 +1,21 @@
+import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import * as NavigationBar from 'expo-navigation-bar';
 import { AppProvider } from '../src/store/AppContext';
 import { ToastViewport } from '../src/components/ToastViewport';
 import { Colors } from '../src/theme';
 
 export default function RootLayout() {
+    useEffect(() => {
+        if (Platform.OS === 'android') {
+            void NavigationBar.setVisibilityAsync('hidden');
+            void NavigationBar.setBehaviorAsync('overlay-swipe');
+        }
+    }, []);
+
     return (
         <AppProvider>
             <SafeAreaProvider>

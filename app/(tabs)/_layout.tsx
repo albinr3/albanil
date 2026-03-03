@@ -12,13 +12,15 @@ export default function TabLayout() {
                 tabBarLabelStyle: {
                     fontSize: 11,
                     fontWeight: '700',
-                    marginTop: -2,
+                    marginTop: 0,
                 },
                 tabBarStyle: {
                     backgroundColor: Colors.surface,
                     borderTopColor: Colors.border,
                     borderTopWidth: 1,
-                    paddingTop: 8,
+                    height: 72,
+                    paddingTop: 6,
+                    paddingBottom: 14,
                     elevation: 8,
                     shadowColor: '#000',
                     shadowOffset: { width: 0, height: -2 },
@@ -26,7 +28,7 @@ export default function TabLayout() {
                     shadowRadius: 4,
                 },
                 tabBarIconStyle: {
-                    marginBottom: -2,
+                    marginBottom: 4,
                 },
             }}
         >
@@ -51,7 +53,7 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="pagos"
                 options={{
-                    title: 'PAGOS',
+                    title: 'SÁBADOS',
                     tabBarIcon: ({ color, size }) => (
                         <MaterialIcons name="paid" size={28} color={color} />
                     ),

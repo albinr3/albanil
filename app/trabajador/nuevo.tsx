@@ -74,7 +74,7 @@ export default function NuevoTrabajadorScreen() {
                         <Text style={styles.sectionTitle}>Apodo</Text>
                         <TextInput
                             style={styles.mainInput}
-                            placeholder="Ej. El Maestro, Junior, Eléctrico"
+                            placeholder="Escribe el nombre"
                             placeholderTextColor={Colors.slate400}
                             value={apodo}
                             onChangeText={setApodo}
@@ -195,6 +195,7 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         color: Colors.slate900,
         letterSpacing: -0.4,
+        flexShrink: 1,
     },
     headerSpacer: {
         width: 40,
@@ -231,24 +232,26 @@ const styles = StyleSheet.create({
         color: Colors.slate600,
     },
     mainInput: {
-        height: 64,
+        minHeight: 56,
         borderRadius: BorderRadius.xl,
         borderWidth: 2,
         borderColor: Colors.slate200,
         backgroundColor: Colors.surface,
         paddingHorizontal: Spacing.base,
+        paddingVertical: 12,
         fontSize: 20,
         fontWeight: '600',
         color: Colors.slate900,
     },
     secondaryInput: {
         marginTop: 4,
-        height: 56,
+        minHeight: 52,
         borderRadius: BorderRadius.lg,
         borderWidth: 1,
         borderColor: Colors.slate200,
         backgroundColor: Colors.surface,
         paddingHorizontal: Spacing.base,
+        paddingVertical: 10,
         fontSize: 16,
         color: Colors.slate900,
     },
@@ -276,13 +279,14 @@ const styles = StyleSheet.create({
         color: Colors.slate500,
     },
     moneyInput: {
-        height: 64,
+        minHeight: 56,
         borderRadius: BorderRadius.xl,
         borderWidth: 2,
         borderColor: Colors.slate200,
         backgroundColor: Colors.surface,
         paddingLeft: 56,
         paddingRight: Spacing.base,
+        paddingVertical: 12,
         fontSize: 24,
         fontWeight: '800',
         color: Colors.slate900,
@@ -290,6 +294,7 @@ const styles = StyleSheet.create({
     typeGrid: {
         marginTop: 4,
         flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: 12,
     },
     typeCard: {

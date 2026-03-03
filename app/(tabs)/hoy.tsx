@@ -12,6 +12,11 @@ export default function HoyScreen() {
     const router = useRouter();
     const { workers, getAttendance, toggleAttendance } = useAppStore();
     const activeWorkers = workers.filter((w) => w.activo);
+    const totalWorked = activeWorkers.filter((worker) => getAttendance(worker.id).worked).length;
+    const totalHalfDay = activeWorkers.filter((worker) => {
+        const attendance = getAttendance(worker.id);
+        return !attendance.worked && attendance.extra?.tipo === 'medio_dia';
+    }).length;
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -84,6 +89,19 @@ export default function HoyScreen() {
                             />
                         );
                     })}
+                </View>
+
+                {/* Summary */}
+                <View style={styles.summaryContainer}>
+                    <Text style={styles.summaryTitle}>Resumen de hoy</Text>
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Trabajaron día completo</Text>
+                        <Text style={styles.summaryValue}>{totalWorked}</Text>
+                    </View>
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Trabajaron medio día</Text>
+                        <Text style={styles.summaryValue}>{totalHalfDay}</Text>
+                    </View>
                 </View>
 
                 <View style={{ height: 100 }} />
@@ -194,5 +212,35 @@ const styles = StyleSheet.create({
     },
     workerList: {
         gap: 16,
+    },
+    summaryContainer: {
+        marginTop: Spacing.xl,
+        paddingVertical: Spacing.lg,
+        paddingHorizontal: Spacing.base,
+        borderRadius: BorderRadius.lg,
+        backgroundColor: Colors.surface,
+        borderWidth: 1,
+        borderColor: Colors.borderLight,
+        gap: 8,
+    },
+    summaryTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: Colors.text,
+        marginBottom: 4,
+    },
+    summaryRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    summaryLabel: {
+        fontSize: 14,
+        color: Colors.textSecondary,
+    },
+    summaryValue: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: Colors.primary,
     },
 });
