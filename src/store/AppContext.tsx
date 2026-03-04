@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { AppState as RNAppState } from 'react-native';
 import type {
     Worker,
     AttendanceRecord,
@@ -42,6 +43,7 @@ interface AppState {
     weekPagada: boolean;
     weekHistory: WeekHistoryEntry[];
     payrollAdjustments: Record<string, { extras: number; adelantos: number }>;
+    todayDateKey: string;
 
     toggleAttendance: (workerId: string) => void;
     toggleAttendanceByDate: (workerId: string, date: string) => void;
@@ -101,6 +103,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const [weekHistory, setWeekHistory] = useState<WeekHistoryEntry[]>([]);
     const [payrollAdjustments, setPayrollAdjustments] = useState<Record<string, { extras: number; adelantos: number }>>({});
     const [payroll, setPayroll] = useState<WeekPayroll>(EMPTY_PAYROLL);
+    const [todayDateKey, setTodayDateKey] = useState<string>(todayKey());
 
     const refreshPayrollState = useCallback(async () => {
         const nextPayroll = await fetchCurrentPayroll();
@@ -119,6 +122,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setPayroll(snapshot.payroll);
             setPayrollAdjustments(snapshot.payrollAdjustments);
             setWeekPagada(snapshot.weekPagada);
+            setTodayDateKey(todayKey());
             return true;
         } catch (error) {
             console.error('[store] reloadSnapshot failed', error);
@@ -142,6 +146,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 setPayroll(snapshot.payroll);
                 setPayrollAdjustments(snapshot.payrollAdjustments);
                 setWeekPagada(snapshot.weekPagada);
+                setTodayDateKey(todayKey());
                 setIsDbReady(true);
 
                 void (async () => {
@@ -165,13 +170,55 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         };
     }, []);
 
+    useEffect(() => {
+        if (!isDbReady) return;
+
+        let isActive = true;
+        const refreshForToday = async () => {
+            try {
+                const [nextAttendance] = await Promise.all([
+                    fetchTodayAttendance(),
+                    refreshPayrollState(),
+                ]);
+                if (!isActive) return;
+                setAttendance(nextAttendance);
+            } catch (error) {
+                console.error('[store] failed to refresh day rollover state', error);
+            }
+        };
+
+        const checkForDayRollover = () => {
+            const currentDateKey = todayKey();
+            setTodayDateKey((prevDateKey) => {
+                if (prevDateKey === currentDateKey) return prevDateKey;
+                void refreshForToday();
+                return currentDateKey;
+            });
+        };
+
+        const appStateSub = RNAppState.addEventListener('change', (state) => {
+            if (state === 'active') {
+                checkForDayRollover();
+            }
+        });
+        const intervalId = setInterval(checkForDayRollover, 60_000);
+
+        checkForDayRollover();
+
+        return () => {
+            isActive = false;
+            appStateSub.remove();
+            clearInterval(intervalId);
+        };
+    }, [isDbReady, refreshPayrollState]);
+
     const getAttendance = useCallback(
         (workerId: string): AttendanceRecord => {
-            const date = todayKey();
+            const date = todayDateKey;
             const key = `${workerId}-${date}`;
             return attendance[key] || { workerId, date, worked: false };
         },
-        [attendance]
+        [attendance, todayDateKey]
     );
 
     const toggleAttendance = useCallback(
@@ -682,6 +729,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             weekPagada,
             weekHistory,
             payrollAdjustments,
+            todayDateKey,
             toggleAttendance,
             toggleAttendanceByDate,
             setExtra,
@@ -707,6 +755,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             weekPagada,
             weekHistory,
             payrollAdjustments,
+            todayDateKey,
             toggleAttendance,
             toggleAttendanceByDate,
             setExtra,

@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { BorderRadius, Colors, Spacing } from '../../src/theme';
+import { useAppStore } from '../../src/store/AppContext';
 
 function toIsoDate(date: Date): string {
     const year = date.getFullYear();
@@ -16,9 +17,15 @@ function isSameMonth(a: Date, b: Date): boolean {
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
 }
 
+function toLocalDate(isoDate: string): Date {
+    const [year, month, day] = isoDate.split('-').map(Number);
+    return new Date(year, month - 1, day);
+}
+
 export default function HoyCalendarioScreen() {
     const router = useRouter();
-    const today = new Date();
+    const { todayDateKey } = useAppStore();
+    const today = useMemo(() => toLocalDate(todayDateKey), [todayDateKey]);
     const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
 
     const monthLabel = cursor.toLocaleDateString('es-DO', { month: 'long', year: 'numeric' });

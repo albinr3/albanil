@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -8,9 +8,15 @@ import { WorkerCard } from '../../src/components/WorkerCard';
 import { Colors, Spacing, BorderRadius, Shadows } from '../../src/theme';
 import { getTodayLabel, getMonthYearLabel } from '../../src/utils';
 
+function toLocalDate(isoDate: string): Date {
+    const [year, month, day] = isoDate.split('-').map(Number);
+    return new Date(year, month - 1, day);
+}
+
 export default function HoyScreen() {
     const router = useRouter();
-    const { workers, getAttendance, toggleAttendance } = useAppStore();
+    const { workers, getAttendance, toggleAttendance, todayDateKey } = useAppStore();
+    const today = useMemo(() => toLocalDate(todayDateKey), [todayDateKey]);
     const activeWorkers = workers.filter((w) => w.activo);
     const totalWorked = activeWorkers.filter((worker) => getAttendance(worker.id).worked).length;
     const totalHalfDay = activeWorkers.filter((worker) => {
@@ -32,8 +38,8 @@ export default function HoyScreen() {
                             <View style={styles.pulseDot} />
                             <Text style={styles.semanaChipText}>Semana en curso</Text>
                         </View>
-                        <Text style={styles.dayTitle}>{getTodayLabel()}</Text>
-                        <Text style={styles.monthSubtitle}>{getMonthYearLabel()}</Text>
+                        <Text style={styles.dayTitle}>{getTodayLabel(today)}</Text>
+                        <Text style={styles.monthSubtitle}>{getMonthYearLabel(today)}</Text>
                     </View>
                     <TouchableOpacity
                         style={styles.settingsButton}

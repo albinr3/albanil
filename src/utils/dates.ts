@@ -11,17 +11,15 @@ const MESES_CORTO = [
 /**
  * Returns today's date label: "Lunes 16"
  */
-export function getTodayLabel(): string {
-    const now = new Date();
-    return `${DIAS[now.getDay()]} ${now.getDate()}`;
+export function getTodayLabel(baseDate: Date = new Date()): string {
+    return `${DIAS[baseDate.getDay()]} ${baseDate.getDate()}`;
 }
 
 /**
  * Returns current month and year: "Febrero 2024"
  */
-export function getMonthYearLabel(): string {
-    const now = new Date();
-    return `${MESES[now.getMonth()]} ${now.getFullYear()}`;
+export function getMonthYearLabel(baseDate: Date = new Date()): string {
+    return `${MESES[baseDate.getMonth()]} ${baseDate.getFullYear()}`;
 }
 
 /**
